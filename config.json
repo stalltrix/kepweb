@@ -1,0 +1,17 @@
+{
+	"mainkey": "mainkey.pub",
+	"pub_key": "pkey.pub",
+	"priv_key": "pkey.priv",
+	"sig_key": "pkey.sig",
+	"domain": "user0.example.com",
+	"login_token": "[your login token]",
+	"api_token": "[your api token]",
+	"listen": "127.0.0.1:3000",
+	"ntp": "",
+	"neighbors": [
+		{
+			"url": "http://127.0.0.1:8081",
+			"token": "token0"
+		}
+	]
+}

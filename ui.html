@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stalltrix K</title>
+	<style>
+        :root {
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --border-color: #ecf0f1;
+            --spacing: 16px;
+            --radius: 5px; /* 统一圆角 */
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; }
+        a { text-decoration: none; color: inherit; transition: color 0.2s; }
+        ul { list-style: none; }
+
+        header { background: var(--card-bg); box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; margin-bottom: 20px; }
+        .nav-inner { max-width: 1100px; margin: 0 auto; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--primary-color); cursor: pointer; }
+        .nav-controls select { padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-sub); }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px 20px 20px; }
+        
+        .layout-wrapper { display: flex; gap: 20px; align-items: flex-start; }
+        .main-content { flex: 1; min-width: 0; /* 防止内容溢出 */ }
+        
+        @media (max-width: 800px) {
+            .layout-wrapper { flex-direction: column; }
+            .sidebar { width: 100% !important; margin-left: 0 !important; }
+        }
+
+        .card { background: var(--card-bg); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
+        
+        .post-item { cursor: pointer; display: flex; justify-content: space-between; align-items: flex-start; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .post-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+        .post-title { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 5px; }
+        .post-meta { font-size: 0.85rem; color: var(--text-sub); }
+        .reply-badge { background: var(--primary-color); color: white; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; min-width: 24px; text-align: center; }
+
+        .comment-item { border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 20px; }
+        .comment-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .comment-user.is-me { color: var(--primary-color); font-weight: bold; }
+
+        input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-family: inherit; margin-bottom: 10px; }
+        .btn { background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: var(--primary-hover); }
+
+        .sidebar {
+            width: 280px; 
+            flex-shrink: 0; 
+        }
+        .sidebar-widget {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            padding: 20px;
+            line-height: 1.5;
+        }
+        .sidebar-widget h3 {
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #555;
+            display: flex;
+            align-items: center;
+        }
+        .sidebar-widget h3::before {
+            content: "▶"; 
+            font-size: 12px;
+            margin-right: 8px;
+            color: #999;
+        }
+        .sidebar-widget p {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .sidebar-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .sidebar-button {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+        }
+		
+        .sidebar-button.blue {
+            background-color: #3192CC; 
+            color: #fff;
+        }
+        .sidebar-button.blue:hover {
+            background-color: #2779AA;
+        }
+        .sidebar-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-menu li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .sidebar-menu li:last-child {
+            border-bottom: none;
+        }
+        .sidebar-menu a {
+            text-decoration: none;
+            color: #555;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .sidebar-menu a:hover {
+            color: #333;
+        }
+        .sidebar-menu .icon {
+            margin-right: 10px;
+            font-size: 16px;
+            width: 20px; 
+            text-align: center;
+            color: #888; 
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            list-style: none;
+            padding: 10px;
+            margin: 20px 0;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .pagination a {
+            text-decoration: none;
+            color: #888;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 3px;
+            transition: background-color 0.3s, color 0.3s;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .pagination a.arrow {
+            color: #ccc; 
+            font-weight: normal;
+        }
+        .pagination a.arrow:not(.disabled):hover {
+             color: #555;
+        }
+        .pagination a.arrow.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .pagination a.page-number {
+            color: #555; 
+        }
+        .pagination a.active {
+            color: #337ab7;
+            position: relative;
+        }
+        .pagination a.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 5px; 
+            transform: translateX(-50%);
+            width: 60%; 
+            height: 2px;
+            background-color: #337ab7;
+            border-radius: 1px;
+        }
+        .pagination a:not(.active):not(.arrow):hover {
+            color: #337ab7; 
+            background-color: #f9f9f9;
+        }
+		.markdown-body {
+line-height: 1.7;
+font-size: 14px;
+}
+.markdown-body ul {
+    list-style: disc;
+    padding-left: 22px;
+}
+
+.markdown-body ol {
+    list-style: decimal;
+    padding-left: 22px;
+}
+
+.markdown-body li {
+    margin: 4px 0;
+}
+#thread-content {
+    background: var(--bg-color);
+    box-shadow: none;
+    padding: 1px;
+}
+#thread-content .comment-item {
+    background: #fff;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    padding: 19px;
+    margin-bottom: 15px;
+    border-bottom: none;
+}
+#thread-content .comment-item:last-child {
+    margin-bottom: 0;
+}
+.edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: 8px;
+    color: var(--text-sub);
+    display: inline-flex;
+    align-items: center;
+}
+
+.edit-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.edit-btn:hover {
+    color: var(--primary-color);
+}
+    </style>
+	<link rel="stylesheet" href="static/markdown.min.css">
+</head>
+<body>
+
+    <!-- 顶部导航 -->
+    <header>
+        <div class="nav-inner">
+            <div class="logo" onclick="app.goHome()">Stalltrix K</div>
+            <div class="nav-controls">
+                <select id="tag-selector" onchange="app.changeTag(this.value)">
+                    <option value="all">全部 (All)</option>
+                    <option value="0">保留 (0)</option>
+                    <option value="1">kep列表 (1)</option>
+					<option value="2">计算机网络 (2)</option>
+					<option value="3">软件开发 (3)</option>
+					<option value="4">富(多)媒体 (4)</option>
+					<option value="5">安全/密码学 (5)</option>
+					<option value="6">数据/AI (6)</option>
+					<option value="7">项目/开源 (7)</option>
+					<option value="8">数码/电脑 (8)</option>
+					<option value="9">游戏/水 (9)</option>
+					<option value="10">行业资讯 (10)</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="layout-wrapper">
+            
+            <main class="main-content">
+                
+                <div id="list-view">
+                    <div id="post-list">
+                    </div>
+                    
+                    <div id="pagination-container" class="pagination">
+                    </div>
+                </div>
+
+                <div id="detail-view" style="display: none;">
+                    <a href="javascript:void(0)" onclick="app.goHome()" style="display:inline-block; margin-bottom:15px; color:var(--primary-color); font-weight:bold;">&larr; 返回列表</a>
+                    
+                    <div id="thread-content" class="card">
+                    </div>
+
+                    <div class="card reply-area">
+                        <h3>发表回复</h3>
+                        <form onsubmit="app.submitReply(event)">
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:0.85rem; color:#888;">用户</label>
+                                <input type="text" id="r_user" placeholder="none" value="none" readonly>
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:0.85rem; color:#888;">内容</label>
+                                <textarea id="r_payload" style="min-height:100px;" placeholder="Say something..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn" id="submit-btn">发送回复</button>
+                        </form>
+                    </div>
+                </div>
+
+            </main>
+
+            <aside class="sidebar">
+                <div class="sidebar-widget">
+                    <h3>信息面板</h3>
+                    <p><b>注意：</b>点击下方登录。 token登录</p>
+                    <div class="sidebar-buttons">
+                        <a href="javascript:void(0)" id="login-btn" onclick="app.openLogin()" class="sidebar-button blue">Sign In</a>
+                        <!--a href="#" class="sidebar-button green">Register</a-->
+                    </div>
+                </div>
+
+                <div class="sidebar-widget sidebar-menu">
+                    <h3>Function</h3>
+                    <ul>
+                        <li><a href="/index.php?manager=banuser"><span class="icon">⚙️</span> Manager</a></li>
+                        <li><a href="#"><span class="icon">🔗</span> Categories</a></li>
+                        <li><a href="/index.php?manager=newpost"><span class="icon">✏️</span> New Post</a></li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-widget sidebar-menu">
+                    <h3>Sub</h3>
+                    <ul>
+                        <li><a href="#"><span class="icon">⚡</span> Status</a></li>
+                        <li><a href="#"><span class="icon">Σ</span> Change</a></li>
+                        <li><a href="#"><span class="icon">🔍</span> Find</a></li>
+                        <li><a href="https://github.com/stalltrix/kepweb"><span class="icon">♡</span> Star</a></li>
+                        <li><a href="#"><span class="icon">$</span> Msg</a></li>
+                        <li><a href="#"><span class="icon">👤</span> Neighbor</a></li>
+                    </ul>
+                </div>
+
+            </aside>
+        </div>
+    </div>
+
+<div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:999;">
+    <div style="background:#fff; padding:25px; border-radius:6px; width:320px;">
+        <h3 style="margin-bottom:15px;">Token 登录</h3>
+        <input type="text" id="api-token" placeholder="输入 API Token">
+        <div style="text-align:right;">
+            <button class="btn" onclick="app.doLogin()">Login</button>
+            <button class="btn" style="background:#aaa" onclick="app.closeLogin()">Cancel</button>
+        </div>
+        <div id="login-msg" style="margin-top:10px; font-size:13px; color:#888;"></div>
+    </div>
+</div>
+
+<script src="static/marked.min.js"></script>
+<script src="static/markdown.js"></script>
+
+<script>
+const app = {
+    apiBase: '',
+    currentTag: 'all',
+    currentPage: 1,
+    currentHex: null,
+    pageSize: 16,
+	token: null,
+	currentUser: null,
+
+    openLogin() {
+        document.getElementById('login-modal').style.display = 'flex';
+    },
+
+    closeLogin() {
+        document.getElementById('login-modal').style.display = 'none';
+    },
+	
+    editPost(id, hex, content) {
+     const editData = {
+        id: id,
+        hex: hex,
+        tag: this.currentTag,
+        content: content
+    };
+	
+	if (hex !== this.currentHex) {
+        editData.pointtoroot = this.currentHex;
+    }
+
+    localStorage.setItem("forum_edit", JSON.stringify(editData));
+
+    location.href = "/index.php?manager=newpost&mod=true";
+    },
+    async doLogin() {
+        const token = document.getElementById('api-token').value.trim();
+        const msg = document.getElementById('login-msg');
+
+        if (!token) {
+            msg.innerText = "请输入 token";
+            return;
+        }
+
+        msg.innerText = "登录中...";
+
+        try {
+            const res = await fetch(`${this.apiBase}/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                credentials: "include",
+                body: JSON.stringify({ token })
+            });
+
+            const data = await res.json();
+
+            if (data.status === 1) {
+                this.token = token;
+				this.currentUser = data.user;
+
+                msg.innerText = "登录成功";
+
+                this.closeLogin();
+
+                this.enableReply();
+				this.setLoggedIn();
+				if (data.user) {
+					document.getElementById('r_user').value = data.user;
+				}
+
+            } else {
+                msg.innerText = "登录失败";
+            }
+
+        } catch (e) {
+            msg.innerText = "网络错误";
+        }
+    },
+	async checkLogin() {
+
+    try {
+        const res = await fetch('/me', { credentials: "include" });
+        const data = await res.json();
+
+        if (data.status === 1) {
+
+            this.token = true;
+			this.currentUser = data.user;
+			this.enableReply();
+            this.setLoggedIn();
+
+            if (data.user) {
+                document.getElementById('r_user').value = data.user;
+            }
+        }
+
+    } catch (e) {
+        ;
+    }
+	},
+	
+	setLoggedIn() {
+
+    const btn = document.getElementById('login-btn');
+
+    btn.innerText = "已登录";
+    btn.onclick = null;
+
+    btn.style.background = "#2ecc71";
+	},
+
+    enableReply() {
+        document.getElementById('r_payload').disabled = false;
+        document.getElementById('submit-btn').disabled = false;
+    },
+
+    init() {
+    this.checkLogin();
+
+    const params = new URLSearchParams(location.search);
+    const topic = params.get("topic");
+
+    if (topic) {
+        this.currentHex = topic;
+        document.getElementById('list-view').style.display = 'none';
+        document.getElementById('detail-view').style.display = 'block';
+        this.loadPost(topic);
+    } else {
+        this.loadIndex();
+    }
+
+    window.addEventListener("popstate", (e) => {
+        const params = new URLSearchParams(location.search);
+        const topic = params.get("topic");
+
+        if (topic) {
+            this.currentHex = topic;
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('detail-view').style.display = 'block';
+            this.loadPost(topic);
+        } else {
+            this.goHome(false);
+        }
+    });
+},
+
+    goHome(push = true) {
+
+    if (push) {
+        history.pushState({}, "", "/index.php");
+    }
+
+    document.getElementById('list-view').style.display = 'block';
+    document.getElementById('detail-view').style.display = 'none';
+
+    this.currentHex = null;
+
+    window.scrollTo(0, 0);
+},
+
+    goToPost(hex) {
+    this.currentHex = hex;
+
+    history.pushState({topic: hex}, "", `/index.php?topic=${hex}`);
+
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('detail-view').style.display = 'block';
+
+    this.loadPost(hex);
+    window.scrollTo(0, 0);
+},
+
+    changeTag(tagId) {
+        this.currentTag = tagId;
+        this.currentPage = 1;
+        this.loadIndex();
+    },
+
+    goToPage(page) {
+        if (page < 1) return;
+        this.currentPage = page;
+        this.loadIndex();
+    },
+
+    async loadIndex() {
+        const listContainer = document.getElementById('post-list');
+        listContainer.innerHTML = '<div class="card">加载中...</div>';
+
+        try {
+            const url = `${this.apiBase}/index/${this.currentTag}/${this.currentPage}`;
+            const res = await fetch(url, {
+				credentials: "include"
+			});
+            if (!res.ok) throw new Error('index api error');
+
+            const data = await res.json();
+
+            listContainer.innerHTML = '';
+            if (!Array.isArray(data) || data.length === 0) {
+                listContainer.innerHTML = '<div class="card">暂无内容</div>';
+                return;
+            }
+
+            data.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'card post-item';
+                el.onclick = () => this.goToPost(item.hex);
+
+                const dateStr = new Date(
+                    parseInt(item.lasttime) * 1000
+                ).toLocaleString();
+
+                el.innerHTML = `
+                    <div style="flex:1">
+                        <div class="post-title">${this.escapeHtml(item.lastview)}</div>
+                        <div class="post-meta">
+                            <span>作者：${this.escapeHtml(item.own)}</span> ·
+                            <span>${dateStr}</span>
+                        </div>
+                    </div>
+                    <div class="reply-badge">${item.reply}</div>
+                `;
+                listContainer.appendChild(el);
+            });
+
+            this.renderPagination(data.length === this.pageSize);
+
+        } catch (err) {
+            listContainer.innerHTML = '<div class="card">加载失败</div>';
+            console.error(err);
+        }
+    },
+
+    renderPagination(hasNext) {
+        const container = document.getElementById('pagination-container');
+
+        container.innerHTML = `
+            <a class="arrow ${this.currentPage === 1 ? 'disabled' : ''}"
+               onclick="${this.currentPage === 1 ? '' : `app.goToPage(${this.currentPage - 1})`}">&lt;</a>
+
+            <a class="page-number active">${this.currentPage}</a>
+
+            <a class="arrow ${hasNext ? '' : 'disabled'}"
+               onclick="${hasNext ? `app.goToPage(${this.currentPage + 1})` : ''}">&gt;</a>
+        `;
+    },
+
+    async loadPost(hex) {
+        const container = document.getElementById('thread-content');
+        container.innerHTML = '<div>加载中...</div>';
+
+        try {
+            const url = `${this.apiBase}/view/${this.currentTag}/${hex}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('view api error');
+
+            const data = await res.json();
+            container.innerHTML = '';
+
+            data.forEach(item => {
+    const canEdit = this.currentUser && item.user === this.currentUser;
+
+    const el = document.createElement('div');
+    el.className = 'comment-item';
+
+    el.innerHTML = `
+        <div class="comment-header">
+            <span class="comment-user ${item.me ? 'is-me' : ''}">
+                #${item.id} ${this.escapeHtml(item.user)}
+            </span>
+
+            <span style="font-size:12px;color:#999">
+                ${this.escapeHtml(item.meta)}
+
+                ${canEdit ? `
+<button class="edit-btn" onclick='app.editPost(${item.id}, "${item.hex}", ${JSON.stringify(item.post)})' title="编辑">
+<svg viewBox="0 0 512 512">
+<path d="M362.7 19.3c25-25 65.5-25 90.5 0l39.5 39.5c25 25 25 65.5 0 90.5L189.3 452.7 0 512l59.3-189.3L362.7 19.3zM0 480l112-32-80-80L0 480z"/>
+</svg>
+</button>
+` : ''}
+            </span>
+        </div>
+
+        <div class="markdown-body">${resolvMarkdown(item.post)}</div>
+    `;
+
+    container.appendChild(el);
+});
+
+        } catch (err) {
+            container.innerHTML = '<div>加载失败</div>';
+            console.error(err);
+        }
+    },
+
+    async submitReply(e) {
+    e.preventDefault();
+
+    if (!this.token) {
+        alert("未登录");
+        return;
+    }
+
+    const payload = {
+        post_payload: document.getElementById('r_payload').value,
+        tag: parseInt(this.currentTag),
+        point_to: this.currentHex
+    };
+
+    try {
+
+        const res = await fetch(`${this.apiBase}/view/${this.currentTag}/${this.currentHex}`, {
+            method: 'POST',
+            credentials: "include",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error('post reply error');
+
+        document.getElementById('r_payload').value = '';
+
+        this.loadPost(this.currentHex);
+
+    } catch (err) {
+
+        alert('回复失败');
+        console.error(err);
+
+    }
+	},
+
+    escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+};
+
+window.onload = () => app.init();
+</script>
+</body>
+</html>

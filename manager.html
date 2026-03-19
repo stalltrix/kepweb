@@ -1,0 +1,410 @@
+<!DOCTYPE html> 
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>论坛后台管理</title>
+
+<style>
+:root {
+    --primary-color: #3498db;
+    --primary-hover: #2980b9;
+    --bg-color: #f4f7f6;
+    --card-bg: #ffffff;
+    --text-main: #2c3e50;
+    --text-sub: #7f8c8d;
+    --border-color: #ecf0f1;
+    --radius: 5px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+    background:var(--bg-color);
+}
+
+.admin-layout{
+    display:flex;
+    min-height:100vh;
+}
+
+.admin-sidebar{
+    width:230px;
+    background:#fff;
+    box-shadow:var(--shadow);
+}
+
+.admin-sidebar h2{
+    padding:20px;
+    font-size:18px;
+    color:var(--primary-color);
+}
+
+.admin-menu{
+    list-style:none;
+    padding:0;
+}
+
+.admin-menu li{
+    border-bottom:1px solid var(--border-color);
+}
+
+.admin-menu a{
+    display:block;
+    padding:12px 20px;
+    color:var(--text-main);
+    cursor:pointer;
+}
+
+.admin-menu a:hover{
+    background:#f7f7f7;
+}
+
+.admin-main{
+    flex:1;
+    padding:20px;
+}
+
+.card{
+    background:#fff;
+    padding:20px;
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    margin-bottom:20px;
+}
+
+h3{
+    margin-bottom:15px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:10px;
+    border-bottom:1px solid var(--border-color);
+    text-align:left;
+    font-size:14px;
+}
+
+.btn{
+    border:none;
+    padding:6px 12px;
+    border-radius:4px;
+    cursor:pointer;
+    background:var(--primary-color);
+    color:white;
+}
+
+.btn:hover{
+    background:var(--primary-hover);
+}
+
+.btn-danger{
+    background:#e74c3c;
+}
+
+input,textarea{
+    width:100%;
+    padding:8px;
+    border:1px solid var(--border-color);
+    border-radius:4px;
+    margin-bottom:10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="admin-layout">
+
+<div class="admin-sidebar">
+
+<h2>论坛后台</h2>
+
+<ul class="admin-menu">
+<li><a onclick="showPanel('users')">用户封禁</a></li>
+<li><a onclick="showPanel('neighbors')">邻居网络</a></li>
+<li><a onclick="showPanel('message')">私信</a></li>
+<li><a onclick="showPanel('post')">帖子管理</a></li>
+<li><a onclick="showPanel('toppost')">置顶管理</a></li>
+</ul>
+
+</div>
+
+<div class="admin-main">
+
+<!-- 用户封禁 -->
+<div id="users" class="panel">
+
+<div class="card">
+
+<h3>封禁域名</h3>
+
+<input id="banDomain" placeholder="输入域名 example.com">
+
+<button class="btn" onclick="banUser()">封禁</button> 
+</div>
+
+<div class="card">
+
+<h3>解除封禁</h3>
+
+<input id="unbanDomain" placeholder="输入域名 example.com">
+
+<button class="btn" onclick="unbanUser()">解除封禁</button> 
+</div>
+
+</div>
+
+
+<!-- 邻居 -->
+<div id="neighbors" class="panel" style="display:none">
+
+<div class="card">
+
+<h3>添加邻居</h3>
+
+<input id="neighborInput" placeholder="输入 neighbor token">
+<input id="neighborURL" placeholder="输入 neighbor URL">
+
+<button class="btn" onclick="addNeighbor()">添加邻居</button> 
+</div>
+
+<div class="card">
+
+<h3>我的邻居</h3>
+
+<table>
+
+<thead>
+<tr>
+<th>Token</th>
+<th>操作</th>
+</tr>
+</thead>
+
+<tbody id="neighborTable">
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<!-- 私信 -->
+<div id="message" class="panel" style="display:none">
+
+<div class="card">
+
+<h3>发送私信（未实现）</h3>
+
+<textarea rows="5" placeholder="输入消息"></textarea>
+
+<button class="btn">发送</button> 
+</div>
+
+</div>
+<!-- 帖子管理 -->
+<div id="post" class="panel" style="display:none">
+
+<div class="card">
+
+<h3>删除帖子</h3>
+
+<input id="postID" placeholder="输入帖子ID">
+
+<button class="btn btn-danger" onclick="delPost()">删除</button>
+
+</div>
+
+</div>
+<div id="toppost" class="panel" style="display:none">
+
+<div class="card">
+
+<h3>置顶帖子</h3>
+
+<input id="topPostID" placeholder="输入帖子ID">
+
+<button class="btn" onclick="topPost()">置顶</button>
+
+</div>
+
+</div>
+</div>
+
+</div>
+
+
+<script>
+
+const API="/manager"
+
+function api(req,act,url=""){
+let manager_csrf="{{ .Tokenk1 }}"
+return fetch(API,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({req:req,act:act,url:url,csrf:manager_csrf})
+}).then(r=>r.json())
+}
+
+function showPanel(id){
+
+document.querySelectorAll(".panel").forEach(p=>{
+p.style.display="none"
+})
+
+document.getElementById(id).style.display="block"
+
+if(id==="neighbors"){
+loadNeighbors()
+}
+
+}
+
+function loadNeighbors(){
+
+api("list","0").then(res=>{
+
+if(res.state!=="OK"){
+alert(res.state)
+return
+}
+
+const table=document.getElementById("neighborTable")
+table.innerHTML=""
+
+res.data.forEach(token=>{
+
+const tr=document.createElement("tr")
+
+tr.innerHTML=
+"<td>"+token+"</td>"+
+"<td><button class='btn btn-danger' onclick='delNeighbor(\""+token+"\")'>删除</button></td>"
+
+table.appendChild(tr)
+
+})
+
+})
+
+}
+
+function addNeighbor(){
+
+const token=document.getElementById("neighborInput").value.trim()
+const url=document.getElementById("neighborURL").value.trim()
+
+if(!token || !url){
+alert("请输入token和url")
+return
+}
+
+api("add_neighbor",token,url).then(res=>{
+
+if(res.state==="OK"){
+alert("添加成功")
+loadNeighbors()
+}else{
+alert(res.state)
+}
+
+})
+
+}
+
+function delNeighbor(token){
+
+if(!confirm("确定删除该邻居？")){
+return
+}
+
+api("del_neighbor",token).then(res=>{
+
+if(res.state==="OK"){
+loadNeighbors()
+}else{
+alert(res.state)
+}
+
+})
+
+}
+
+function banUser(){
+
+const domain=document.getElementById("banDomain").value.trim()
+
+if(!domain){
+alert("请输入域名")
+return
+}
+
+api("ban",domain).then(res=>{
+alert(res.state)
+})
+
+}
+
+function unbanUser(){
+
+const domain=document.getElementById("unbanDomain").value.trim()
+
+if(!domain){
+alert("请输入域名")
+return
+}
+
+api("unban",domain).then(res=>{
+alert(res.state)
+})
+
+}
+
+function delPost(){
+
+const id=document.getElementById("postID").value.trim()
+
+if(!id){
+alert("请输入帖子ID")
+return
+}
+
+if(!confirm("确定删除该帖子？")){
+return
+}
+
+api("delmsg",id).then(res=>{
+alert(res.state)
+})
+
+}
+
+function topPost(){
+
+const id=document.getElementById("topPostID").value.trim()
+
+if(!id){
+alert("请输入帖子ID")
+return
+}
+
+api("top",id).then(res=>{
+alert(res.state)
+})
+
+}
+
+</script>
+
+</body>
+</html>

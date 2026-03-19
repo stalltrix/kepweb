@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Stalltrix K 编辑器</title>
+
+<link rel="stylesheet" href="static/markdown.min.css">
+
+<style>
+
+:root{
+    --primary-color:#3498db;
+    --primary-hover:#2980b9;
+    --bg-color:#f4f7f6;
+    --card-bg:#ffffff;
+    --text-main:#2c3e50;
+    --text-sub:#7f8c8d;
+    --border-color:#ecf0f1;
+    --radius:5px;
+    --shadow:0 1px 3px rgba(0,0,0,0.1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg-color);
+    color:var(--text-main);
+}
+
+header{
+    background:var(--card-bg);
+    box-shadow:var(--shadow);
+    margin-bottom:20px;
+}
+
+.nav-inner{
+    max-width:1100px;
+    margin:auto;
+    padding:15px 20px;
+    font-size:18px;
+    font-weight:bold;
+    color:var(--primary-color);
+}
+
+.container{
+    max-width:1600px;
+    margin:auto;
+    padding:0 20px 20px;
+}
+
+.editor-layout{
+    display:flex;
+    gap:20px;
+}
+
+.card{
+    background:var(--card-bg);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px;
+}
+
+.editor{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+textarea{
+    width:100%;
+    min-height:420px;
+    resize:vertical;
+    border:1px solid var(--border-color);
+    border-radius:4px;
+    padding:10px;
+    font-size:14px;
+    font-family:monospace;
+}
+
+.preview{
+    flex:1;
+    overflow:auto;
+}
+
+.markdown-body{
+    max-width:900px;
+}
+
+.editor-toolbar{
+    display:flex;
+    justify-content:flex-end;
+    gap:15px;
+    margin:10px 0;
+}
+
+.toolbar-item{
+    display:flex;
+    flex-direction:column;
+    font-size:12px;
+    color:var(--text-sub);
+}
+
+.toolbar-item label{
+    margin-bottom:3px;
+}
+
+.toolbar-item input,
+.toolbar-item select{
+    padding:6px 8px;
+    border:1px solid var(--border-color);
+    border-radius:4px;
+    font-size:13px;
+}
+
+.toolbar-item input:focus,
+.toolbar-item select:focus{
+    outline:none;
+    border-color:var(--primary-color);
+}
+
+.btn{
+    background:var(--primary-color);
+    color:white;
+    border:none;
+    padding:10px 20px;
+    border-radius:4px;
+    cursor:pointer;
+    align-self:flex-end;
+}
+
+.btn:hover{
+    background:var(--primary-hover);
+}
+
+pre{
+    background:#2d2d2d;
+    color:#fff;
+    padding:12px;
+    border-radius:4px;
+    overflow:auto;
+}
+
+code{
+    background:#f3f3f3;
+    padding:2px 4px;
+    border-radius:3px;
+}
+
+.msg-box{
+    position:fixed;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.35);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+
+.msg-content{
+    background:white;
+    padding:25px 30px;
+    border-radius:6px;
+    min-width:260px;
+    text-align:center;
+    box-shadow:var(--shadow);
+}
+
+.msg-content span{
+    display:block;
+    margin-top:10px;
+    margin-bottom:15px;
+}
+
+.msg-content button{
+    background:var(--primary-color);
+    border:none;
+    color:white;
+    padding:6px 14px;
+    border-radius:4px;
+    cursor:pointer;
+}
+
+.spinner{
+    width:32px;
+    height:32px;
+    border:4px solid #ddd;
+    border-top:4px solid var(--primary-color);
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:auto;
+}
+
+@keyframes spin{
+    from{transform:rotate(0deg);}
+    to{transform:rotate(360deg);}
+}
+
+@media (max-width:900px){
+    .editor-layout{
+        flex-direction:column;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="nav-inner">
+<div class="logo" onclick="goHome()">Stalltrix K 编辑器</div>
+</div>
+</header>
+
+<div class="container">
+
+<div class="editor-layout">
+
+<div class="editor card">
+
+<textarea id="markdownInput">
+# 帖子标题
+
+内容
+
+列表
+- 项目一
+- 项目二
+- 项目三
+</textarea>
+
+<div class="editor-toolbar">
+
+<div class="toolbar-item" id="tagBox">
+<label>标签</label>
+<select id="tagInput">
+<option value="0">保留 (0)</option>
+                    <option value="1">kep列表 (1)</option>
+					<option value="2">计算机网络 (2)</option>
+					<option value="3">软件开发 (3)</option>
+					<option value="4">富(多)媒体 (4)</option>
+					<option value="5">安全/密码学 (5)</option>
+					<option value="6">数据/AI (6)</option>
+					<option value="7">项目/开源 (7)</option>
+					<option value="8">数码/电脑 (8)</option>
+					<option value="9">游戏/水 (9)</option>
+					<option value="10">行业资讯 (10)</option>
+</select>
+</div>
+
+<div class="toolbar-item">
+<label>权限</label>
+<input id="permInput" type="number" min="0" max="255" value="0">
+</div>
+
+</div>
+
+<button class="btn" id="postBtn" onclick="postMarkdown()">立即发帖</button>
+
+</div>
+
+<div class="preview card">
+<div id="preview" class="markdown-body"></div>
+</div>
+
+</div>
+</div>
+
+<div id="msgBox" class="msg-box">
+<div class="msg-content">
+<div id="spinner" class="spinner"></div>
+<span id="msgText">正在提交...</span>
+<button id="msgBtn" onclick="closeMsg()" style="display:none">确定</button>
+</div>
+</div>
+
+<script src="static/marked.min.js"></script>
+<script src="static/markdown.js"></script>
+
+<script>
+let editMode = false;
+let editData = null;
+function showLoading(){
+document.getElementById("msgBox").style.display="flex";
+document.getElementById("spinner").style.display="block";
+document.getElementById("msgText").innerText="正在提交，请稍候...";
+document.getElementById("msgBtn").style.display="none";
+}
+
+function showMsg(text,redirect=false){
+document.getElementById("spinner").style.display="none";
+document.getElementById("msgText").innerText=text;
+document.getElementById("msgBtn").style.display="inline-block";
+
+if(redirect){
+setTimeout(()=>{
+window.location.href="/index.php";
+},1200);
+}
+}
+
+function closeMsg(){
+document.getElementById("msgBox").style.display="none";
+}
+
+function generateNonce(){
+return Date.now()+"_"+Math.random().toString(36).slice(2);
+}
+
+function goHome() {
+window.location.href="/index.php";
+}
+
+function postMarkdown(){
+
+const btn=document.getElementById("postBtn");
+btn.disabled=true;
+
+showLoading();
+
+const markdown=document.getElementById("markdownInput").value;
+let tag=document.getElementById("tagInput").value;
+const perm=document.getElementById("permInput").value;
+
+let pointTo = "";
+let pointToRoot = "";
+
+if(editMode){
+tag=65534
+pointTo = editData.hex;
+if(editData.pointtoroot){
+pointToRoot = editData.pointtoroot;
+}
+}
+
+const nonce=generateNonce();
+
+fetch("/index.php",{
+method:"POST",
+credentials:"include",
+headers:{
+"Content-Type":"application/x-www-form-urlencoded"
+},
+body:
+"markdown="+encodeURIComponent(markdown)+
+"&tag="+encodeURIComponent(tag)+
+"&typeid="+encodeURIComponent(perm)+
+"&nonce="+encodeURIComponent(nonce)+
+(editMode ? "&pointto="+encodeURIComponent(pointTo) : "")+
+(editMode && pointToRoot ? "&pointtoroot="+encodeURIComponent(pointToRoot) : "")
+})
+.then(res=>res.text())
+.then(data=>{
+
+btn.disabled=false;
+
+if(data.trim()==="post ok"){
+localStorage.removeItem("forum_edit");
+showMsg("发帖成功",true);
+}
+else if(data.trim()==="access deny"){
+showMsg("没有权限");
+}
+else if(data.trim()==="duplicate"){
+showMsg("重复提交");
+}
+else{
+showMsg("服务器返回: "+data);
+}
+
+})
+.catch(()=>{
+btn.disabled=false;
+showMsg("网络错误，请稍后再试");
+});
+}
+
+
+function initEditMode(){
+
+const params = new URLSearchParams(location.search);
+
+if(params.get("mod") !== "true") return;
+
+const data = localStorage.getItem("forum_edit");
+
+if(!data) return;
+
+editData = JSON.parse(data);
+
+editMode = true;
+
+document.getElementById("markdownInput").value = editData.content;
+
+document.getElementById("postBtn").innerText = "保存修改";
+document.getElementById("tagBox").style.display="none";
+}
+
+function renderMarkdown(){
+const input=document.getElementById("markdownInput").value;
+let html=resolvMarkdown(input);
+document.getElementById("preview").innerHTML=html;
+}
+
+document.getElementById("markdownInput").addEventListener("input",renderMarkdown);
+
+initEditMode();
+renderMarkdown();
+
+</script>
+
+</body>
+</html>
