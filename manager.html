@@ -170,6 +170,7 @@ input,textarea{
 
 <input id="neighborInput" placeholder="输入 neighbor token">
 <input id="neighborURL" placeholder="输入 neighbor URL">
+<input id="neighborRPM" placeholder="输入 neighbor RPM" value="300">
 
 <button class="btn" onclick="addNeighbor()">添加邻居</button> 
 </div>
@@ -246,14 +247,14 @@ input,textarea{
 
 const API="/manager"
 
-function api(req,act,url=""){
+function api(req,act,url="",rpm=0){
 let manager_csrf="{{ .Tokenk1 }}"
 return fetch(API,{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
 },
-body:JSON.stringify({req:req,act:act,url:url,csrf:manager_csrf})
+body:JSON.stringify({req:req,act:act,url:url,csrf:manager_csrf,rpm:rpm})
 }).then(r=>r.json())
 }
 
@@ -303,13 +304,16 @@ function addNeighbor(){
 
 const token=document.getElementById("neighborInput").value.trim()
 const url=document.getElementById("neighborURL").value.trim()
+const rpm=document.getElementById("neighborRPM").value.trim()
 
-if(!token || !url){
-alert("请输入token和url")
+if(!token || !url || !rpm){
+alert("请输入token和url和rpm")
 return
 }
 
-api("add_neighbor",token,url).then(res=>{
+let rpm_n = parseInt(rpm, 10);
+
+api("add_neighbor",token,url,rpm_n).then(res=>{
 
 if(res.state==="OK"){
 alert("添加成功")

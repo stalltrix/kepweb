@@ -3,7 +3,7 @@ module github.com/stalltrix/kepweb
 go 1.23.11
 
 require (
-	github.com/stalltrix/kep-demo v0.1.0
+	github.com/stalltrix/kep-demo v0.1.1
 	golang.org/x/time v0.12.0
 )
 
