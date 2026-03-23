@@ -15,8 +15,8 @@ import (
 
 var (
     BaseDir   = "kep-data"
-    CacheTTL  = 30 * time.Minute
-    MaxTagNum = 32
+    CacheTTL  = 5 * time.Minute
+    MaxTagNum = 512
 )
 
 type cacheItem struct {
@@ -150,7 +150,7 @@ func findHashFile(hash string) (string, error) {
 }
 
 func findSubFile(hash string) (string, error) {
-    return findFile(hash + ".txt")
+    return FindFile(hash + ".txt")
 }
 
 func FindALLFile(name string) (string, error) {
@@ -175,7 +175,7 @@ func FindALLFile(name string) (string, error) {
     return found, nil
 }
 
-func findFile(name string) (string, error) {
+func FindFile(name string) (string, error) {
     path := filepath.Join(BaseDir, "index", name)
 
     if _, err := os.Stat(path); err != nil {

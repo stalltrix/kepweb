@@ -484,8 +484,7 @@ const app = {
 
     const params = new URLSearchParams(location.search);
     const topic = params.get("topic");
-
-    if (topic) {
+	if(/^[0-9a-f]+$/.test(topic)) {
         this.currentHex = topic;
         document.getElementById('list-view').style.display = 'none';
         document.getElementById('detail-view').style.display = 'block';
@@ -498,7 +497,7 @@ const app = {
         const params = new URLSearchParams(location.search);
         const topic = params.get("topic");
 
-        if (topic) {
+        if(/^[0-9a-f]+$/.test(topic)) {
             this.currentHex = topic;
             document.getElementById('list-view').style.display = 'none';
             document.getElementById('detail-view').style.display = 'block';
