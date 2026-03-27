@@ -574,12 +574,44 @@ const app = {
                     parseInt(item.lasttime) * 1000
                 ).toLocaleString();
 
+            let metaObj = null;
+            try {
+                if (item.meta) {
+                    metaObj = JSON.parse(item.meta);
+                }
+            } catch(e) {}
+
+            let displayName = this.escapeHtml(item.own);
+            let avatar = "";
+
+            if (metaObj) {
+                if (metaObj.name) {
+                    displayName = this.escapeHtml(metaObj.name);
+                }
+
+                if (metaObj.img) {
+                    avatar = `<img src="${this.escapeHtml(metaObj.img)}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
+                }
+            }
+
+            let typeBadge = "";
+            if (item.typeid && item.typeid != 0) {
+                typeBadge = `
+<span style="display:inline-flex;align-items:center;margin-left:6px;color:red;">
+<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;">
+  <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+  <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+</svg>
+${item.typeid}
+</span>`;
+            }
+
                 el.innerHTML = `
                     <div style="flex:1">
-                        <div class="post-title">${this.escapeHtml(item.lastview)}</div>
+                        <div class="post-title">${this.escapeHtml(item.lastview)} ${typeBadge}</div>
                         <div class="post-meta">
-                            <span>作者：${this.escapeHtml(item.own)}</span> ·
-                            <span>${dateStr}</span>
+                        ${avatar}<span>${displayName}</span> · 
+                            <span>post on: ${dateStr}</span>
                         </div>
                     </div>
                     <div class="reply-badge">${item.reply}</div>
@@ -622,7 +654,35 @@ const app = {
             container.innerHTML = '';
 
             data.forEach(item => {
+
     const canEdit = this.currentUser && item.user === this.currentUser;
+
+    let metaObj = null;
+    try {
+        if (item.meta) {
+            metaObj = JSON.parse(item.meta);
+        }
+    } catch(e) {}
+
+    let displayName = this.escapeHtml(item.user);
+    let userSuffix = "";
+    let avatar = "";
+    let metaId = this.escapeHtml(item.meta);
+
+    if (metaObj) {
+
+        if (metaObj.name) {
+            displayName = this.escapeHtml(metaObj.name);
+			if (metaObj.id) {
+				userSuffix = ` (${this.escapeHtml(metaObj.id)})`;
+			}
+			metaId = this.escapeHtml(item.user);
+        }
+
+        if (metaObj.img) {
+            avatar = `<img src="${this.escapeHtml(metaObj.img)}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
+        }
+    }
 
     const el = document.createElement('div');
     el.className = 'comment-item';
@@ -630,11 +690,12 @@ const app = {
     el.innerHTML = `
         <div class="comment-header">
             <span class="comment-user ${item.me ? 'is-me' : ''}">
-                #${item.id} ${this.escapeHtml(item.user)}
+                ${avatar}
+                #${item.id} ${displayName}${userSuffix}
             </span>
 
             <span style="font-size:12px;color:#999">
-                ${this.escapeHtml(item.meta)}
+                ${metaId}
 
                 ${canEdit ? `
 <button class="edit-btn" onclick='app.editPost(${item.id}, "${item.hex}", ${JSON.stringify(item.post)})' title="编辑">
