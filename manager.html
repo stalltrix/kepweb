@@ -131,6 +131,7 @@ input,textarea{
 <li><a onclick="showPanel('message')">私信</a></li>
 <li><a onclick="showPanel('post')">帖子管理</a></li>
 <li><a onclick="showPanel('toppost')">置顶管理</a></li>
+<li><a onclick="showPanel('changetag')">分类管理</a></li>
 </ul>
 
 </div>
@@ -142,7 +143,7 @@ input,textarea{
 
 <div class="card">
 
-<h3>封禁域名</h3>
+<h3>封禁域名  （PSL级封禁）</h3>
 
 <input id="banDomain" placeholder="输入域名 example.com">
 
@@ -216,12 +217,12 @@ input,textarea{
 
 <div class="card">
 
-<h3>删除帖子</h3>
+<h3>删除帖子/重发帖子</h3>
 
 <input id="postID" placeholder="输入帖子ID">
 
 <button class="btn btn-danger" onclick="delPost()">删除</button>
-
+<button class="btn" onclick="resendPost()">重发</button>
 </div>
 
 </div>
@@ -234,6 +235,20 @@ input,textarea{
 <input id="topPostID" placeholder="输入帖子ID">
 
 <button class="btn" onclick="topPost()">置顶</button>
+
+</div>
+
+</div>
+<div id="changetag" class="panel" style="display:none">
+
+<div class="card">
+
+<h3>修改分类</h3>
+
+<input id="tagPostID" placeholder="输入帖子ID">
+<input id="tagval" placeholder="新标签(数字)">
+
+<button class="btn" onclick="tagPost()">修改</button>
 
 </div>
 
@@ -393,6 +408,25 @@ alert(res.state)
 
 }
 
+function resendPost(){
+
+const id=document.getElementById("postID").value.trim()
+
+if(!id){
+alert("请输入帖子ID")
+return
+}
+
+if(!confirm("确定重新广播该帖子？")){
+return
+}
+
+api("resend",id).then(res=>{
+alert(res.state)
+})
+
+}
+
 function topPost(){
 
 const id=document.getElementById("topPostID").value.trim()
@@ -403,6 +437,22 @@ return
 }
 
 api("top",id).then(res=>{
+alert(res.state)
+})
+
+}
+
+function tagPost(){
+
+const id=document.getElementById("tagPostID").value.trim()
+const newtag=document.getElementById("tagval").value.trim()
+
+if(!id || !newtag){
+alert("请输入帖子ID与新标签")
+return
+}
+
+api("tag",id,newtag).then(res=>{
 alert(res.state)
 })
 

@@ -6,6 +6,7 @@
 	"domain": "user0.example.com",
 	"login_token": "[your login token]",
 	"api_token": "[your api token]",
+	"log_level": "info",
 	"meta_on": false,
 	"listen": "127.0.0.1:3000",
 	"ntp": "",

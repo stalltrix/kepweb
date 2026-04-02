@@ -9,6 +9,7 @@ import (
 	"html"
 	"encoding/json"
 	"strings"
+	"golang.org/x/net/idna"
 )
 
 var (
@@ -94,7 +95,7 @@ func meta_renew(domain,hexid string,is_exist bool) (string,error) {
 	}
 		return "",err
 	}
-	if len(img)>255||len(name)>64{
+	if len(img)>255||len(name)>255{
 	if is_exist {
 		val,ok:=metaMap.Load(domain)
 		if ok {
@@ -116,6 +117,10 @@ func meta_renew(domain,hexid string,is_exist bool) (string,error) {
 		img=strings.ReplaceAll(img, "%2F", "/")
 	}
 	if name!=""{
+		 unicode, err := idna.ToUnicode(name)
+		if err == nil {
+			name=unicode
+		}
 		name=html.EscapeString(name)
 	}
 	type User struct {

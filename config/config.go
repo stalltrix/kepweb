@@ -17,6 +17,7 @@ type Config struct {
     SigKey    string     `json:"sig_key"`
     Domain    string     `json:"domain"`
 	Token     string     `json:"login_token"`
+	LogLevel string      `json:"log_level"`
 	Metaon    bool      `json:"meta_on"`
 	ApiToken     string     `json:"api_token"`
 	Apiport     string     `json:"api_port"`

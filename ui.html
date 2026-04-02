@@ -247,6 +247,10 @@ font-size: 14px;
 .edit-btn:hover {
     color: var(--primary-color);
 }
+.reply-icon{
+  width:24px;
+  margin-left:auto;
+}
     </style>
 	<link rel="stylesheet" href="static/markdown.min.css">
 </head>
@@ -270,6 +274,7 @@ font-size: 14px;
 					<option value="8">数码/电脑 (8)</option>
 					<option value="9">游戏/水 (9)</option>
 					<option value="10">行业资讯 (10)</option>
+					<option value="11">公告/张贴 (11)</option>
                 </select>
             </div>
         </div>
@@ -289,7 +294,7 @@ font-size: 14px;
                 </div>
 
                 <div id="detail-view" style="display: none;">
-                    <a href="javascript:void(0)" onclick="app.goHome()" style="display:inline-block; margin-bottom:15px; color:var(--primary-color); font-weight:bold;">&larr; 返回列表</a>
+                    <a href="javascript:void(0)" onclick="app.goHome()" style="display:inline-block; margin-bottom:15px; color:var(--primary-color); font-weight:bold;">&larr; 返回列表</a> <p> 当前位置: <span id="nowtag"></span></p>
                     
                     <div id="thread-content" class="card">
                     </div>
@@ -363,6 +368,20 @@ font-size: 14px;
 <script src="static/markdown.js"></script>
 
 <script>
+const TAG_MAP = {
+    0: {name:"保留", color:"#999999"},
+    1: {name:"kep列表", color:"#BF1E2E"},
+    2: {name:"计算机网络", color:"#0E76BD"},
+    3: {name:"软件开发", color:"#3AB54A"},
+    4: {name:"富(多)媒体", color:"#8E44AD"},
+    5: {name:"安全/密码学", color:"#C0392B"},
+    6: {name:"数据/AI", color:"#16A085"},
+    7: {name:"项目/开源", color:"#27AE60"},
+    8: {name:"数码/电脑", color:"#2C3E50"},
+    9: {name:"游戏/水", color:"#F7941D"},
+    10: {name:"行业资讯", color:"#7F8C8D"},
+    11: {name:"公告/张贴", color:"#C4A812"}
+};
 const app = {
     apiBase: '',
     currentTag: 'all',
@@ -591,7 +610,10 @@ const app = {
 
                 if (metaObj.img) {
                     avatar = `<img src="${this.escapeHtml(metaObj.img)}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
-                }
+                } else {
+					const seed = encodeURIComponent(displayName);
+					avatar = `<img src="https://avatar.stalltrix.com/avatar?seed=${seed}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
+				}
             }
 
             let typeBadge = "";
@@ -605,13 +627,14 @@ const app = {
 ${item.typeid}
 </span>`;
             }
-
+			
+				const tag = TAG_MAP[item.tag] || {name:"未知",color:"#999"};
                 el.innerHTML = `
                     <div style="flex:1">
                         <div class="post-title">${this.escapeHtml(item.lastview)} ${typeBadge}</div>
                         <div class="post-meta">
                         ${avatar}<span>${displayName}</span> · 
-                            <span>post on: ${dateStr}</span>
+                            <span>Last active: ${dateStr}</span> ·  <span><b>in</b> ${tag.name}</span>
                         </div>
                     </div>
                     <div class="reply-badge">${item.reply}</div>
@@ -643,6 +666,7 @@ ${item.typeid}
 
     async loadPost(hex) {
         const container = document.getElementById('thread-content');
+		const mytag = document.getElementById('nowtag');
         container.innerHTML = '<div>加载中...</div>';
 
         try {
@@ -652,10 +676,16 @@ ${item.typeid}
 
             const data = await res.json();
             container.innerHTML = '';
+			
+			if (Array.isArray(data) && data.length != 0) {
+			const tag = TAG_MAP[data[0].tag] || {name:"未知",color:"#999"};
+			mytag.innerText = "/index/tag/"+tag.name+"("+String(data[0].tag)+")"
+			}
 
             data.forEach(item => {
 
     const canEdit = this.currentUser && item.user === this.currentUser;
+	const canreply = (this.token != null)
 
     let metaObj = null;
     try {
@@ -681,7 +711,10 @@ ${item.typeid}
 
         if (metaObj.img) {
             avatar = `<img src="${this.escapeHtml(metaObj.img)}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
-        }
+        } else {
+			const seed = encodeURIComponent(displayName);
+			avatar = `<img src="https://avatar.stalltrix.com/avatar?seed=${seed}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
+		}
     }
 
     const el = document.createElement('div');
@@ -704,10 +737,19 @@ ${item.typeid}
 </svg>
 </button>
 ` : ''}
+
             </span>
         </div>
 
         <div class="markdown-body">${resolvMarkdown(item.post)}</div>
+		
+		${canreply ? `
+<div class="reply-icon">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" onclick="btnreply()">
+  <path d="M10 9V5L3 12L10 19V15C15 15 18 16.5 21 20C20 14 17 9 10 9Z" 
+        fill="#555"/>
+</svg>
+</div>` : ''}
     `;
 
     container.appendChild(el);
@@ -768,6 +810,9 @@ ${item.typeid}
 };
 
 window.onload = () => app.init();
+function btnreply() {
+    alert('暂未实现，建议手动@用户，或markdown "> text..."引用标识')
+};
 </script>
 </body>
 </html>
