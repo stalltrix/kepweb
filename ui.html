@@ -251,6 +251,11 @@ font-size: 14px;
   width:24px;
   margin-left:auto;
 }
+.current-tag{
+    font-size:13px;
+    color: var(--text-muted);
+    margin-bottom:12px;
+}
     </style>
 	<link rel="stylesheet" href="static/markdown.min.css">
 </head>
@@ -294,7 +299,9 @@ font-size: 14px;
                 </div>
 
                 <div id="detail-view" style="display: none;">
-                    <a href="javascript:void(0)" onclick="app.goHome()" style="display:inline-block; margin-bottom:15px; color:var(--primary-color); font-weight:bold;">&larr; 返回列表</a> <p> 当前位置: <span id="nowtag"></span></p>
+                    <a href="javascript:void(0)" onclick="app.goHome()" style="display:inline-block; margin-bottom:15px; color:var(--primary-color); font-weight:bold;">&larr; 返回列表</a>
+					
+					<p class="current-tag"> 当前位置: <span id="nowtag"></span></p>
                     
                     <div id="thread-content" class="card">
                     </div>
@@ -679,7 +686,7 @@ ${item.typeid}
 			
 			if (Array.isArray(data) && data.length != 0) {
 			const tag = TAG_MAP[data[0].tag] || {name:"未知",color:"#999"};
-			mytag.innerText = "/index/tag/"+tag.name+"("+String(data[0].tag)+")"
+			mytag.innerText = "/tag/"+tag.name+"("+String(data[0].tag)+")"
 			}
 
             data.forEach(item => {

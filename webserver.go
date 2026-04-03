@@ -197,11 +197,6 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
     postHex := parts[2]
 	
-	if len(postHex)!=64{
-		http.Error(w, "post not found", http.StatusNotFound)
-        return
-	}
-	
 	if !IsHex(postHex){
 		http.Error(w, "post not found", http.StatusNotFound)
         return
@@ -888,6 +883,9 @@ func main() {
 		logger.Fatalln("can't read config.json",err)
 	}
 	
+	if cfg.LogLevel == "" {
+		cfg.LogLevel="info"
+	}
 	logger.SYS_Level(cfg.LogLevel)
 	logDebug.SetLevel("debug")
 	logInfo.SetLevel("info")
