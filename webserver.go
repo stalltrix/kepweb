@@ -37,7 +37,7 @@ type Reply struct {
     Meta string `json:"meta"`
     Me   bool   `json:"me"`
     Post string `json:"post"`
-    Time int64  `json:"-"`
+    Time int64  `json:"post_time"`
 	Tag  uint16  `json:"tag"`
 	Hex string  `json:"hex"`
 	MetaTime int64 `json:"-"`
@@ -513,11 +513,18 @@ func async_send(payload ReplyRequest) (string,error) {
 func loadData(tag string,renew bool){
 		hexs,err:=kepdb.ReadHash(tag)
 			if err ==nil {
-			txt,domain,timestamp,point_to,perm,key_des,_,_,_,tag_i,err:=kepresolv.Resolv(hexs)
+			dat,err:=kepresolv.Resolv(hexs)
 			if err !=nil {
 				logWarn.Println("load data err:",err)
 				return;
 			}
+			txt:=dat.Atxt
+			domain:=dat.Adomain
+			timestamp:=dat.Atimestamp
+			point_to:=dat.Apoint_to
+			perm:=dat.Aperm
+			key_des:=dat.Akey_des
+			tag_i:=dat.Atag2
 			if point_to != nil {
 				//回帖子内容，跳过
 				if !renew{
@@ -529,7 +536,10 @@ func loadData(tag string,renew bool){
 						logWarn.Println("ERR: 找不到原始帖子",err)
 						return
 					}
-					_,o_domain,_,_,_,o_key_des,_,_,_,o_tag_i,err:=kepresolv.Resolv(o_hexs)
+					dat,err:=kepresolv.Resolv(o_hexs)
+					o_domain:=dat.Adomain
+					o_key_des:=dat.Akey_des
+					o_tag_i:=dat.Atag2
 					if err!=nil {
 						logErr.Println("ERR: 原始帖子err",err)
 						return
@@ -589,7 +599,14 @@ func loadData(tag string,renew bool){
 for _,sub := range subs {
 	hex_byte,err:=kepdb.ReadHash(sub)
 	if err ==nil {
- txt2,domain2,timestamp2,point_to2,perm2,key_des2,_,_,_,tagi2,err:=kepresolv.Resolv(hex_byte)
+	dat,err:=kepresolv.Resolv(hex_byte)
+ txt2:=dat.Atxt
+ domain2:=dat.Adomain
+ timestamp2:=dat.Atimestamp
+ point_to2:=dat.Apoint_to
+ perm2:=dat.Aperm
+ key_des2:=dat.Akey_des
+ tagi2:=dat.Atag2
  if err !=nil {
 	logInfo.Println("load data err:",err)
 	continue;
@@ -673,7 +690,14 @@ func initData() {
 	for _,tag := range tags {
 	hexs,err:=kepdb.ReadHash(tag)
 	if err ==nil {
-	txt,domain,timestamp,point_to,_,key_des,_,_,point_to_root,tag_i,err:=kepresolv.Resolv(hexs)
+	dat,err:=kepresolv.Resolv(hexs)
+	txt:=dat.Atxt
+	domain:=dat.Adomain
+	timestamp:=dat.Atimestamp
+	point_to:=dat.Apoint_to
+	key_des:=dat.Akey_des
+	point_to_root:=dat.Aroot
+	tag_i:=dat.Atag2
 			if err !=nil {
 				logInfo.Println("load data err:",err)
 				continue;
@@ -687,7 +711,9 @@ func initData() {
 			logInfo.Println("debug: point_to_hex not found",err)
 			continue;
 		}
-		_,ori_domain,_,_,_,ori_key_des,_,_,_,_,err:=kepresolv.Resolv(hexbyte)
+		o_dat,err:=kepresolv.Resolv(hexbyte)
+		ori_domain:=o_dat.Adomain
+		ori_key_des:=o_dat.Akey_des
 		if err!=nil{
 			logInfo.Println("debug: point msg not found",err)
 			continue;
@@ -703,7 +729,9 @@ func initData() {
 			logInfo.Println("debug: point_to_root not found",err)
 			continue;
 		}
-		_,ori_domain_root,_,_,_,ori_key_des_root,_,_,_,_,err:=kepresolv.Resolv(rootbyte)
+		o2_dat,err:=kepresolv.Resolv(rootbyte)
+		ori_domain_root:=o2_dat.Adomain
+		ori_key_des_root:=o2_dat.Akey_des
 		if err!=nil{
 			logInfo.Println("debug: point root msg not found",err)
 			continue;
@@ -755,8 +783,25 @@ func initData() {
 	}
 	will_change_reply=nil
 	}
+	
+	sort.Slice(sortList[:sortIdx], func(i, j int) bool {
+		if sortList[i]==""||sortList[j]==""{
+			return false
+		}
+		return getpostTime(sortList[i]) < getpostTime(sortList[j])
+	})
 }
 
+func getpostTime(hex string) int64 {
+	if hex == "" {
+		return 0
+	}
+	post, ok := postStore[hex]
+	if ok {
+		return post.LastTime
+	}
+	return 0
+}
 
 func auto_renew_data(){
 for {

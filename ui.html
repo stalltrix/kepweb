@@ -693,6 +693,7 @@ ${item.typeid}
 
     const canEdit = this.currentUser && item.user === this.currentUser;
 	const canreply = (this.token != null)
+	const dateStr = new Date(item.post_time * 1000).toLocaleString();
 
     let metaObj = null;
     try {
@@ -731,7 +732,8 @@ ${item.typeid}
         <div class="comment-header">
             <span class="comment-user ${item.me ? 'is-me' : ''}">
                 ${avatar}
-                #${item.id} ${displayName}${userSuffix}
+                #${item.id} ${displayName}${userSuffix} 
+				<span style="font-size:12px;color:#999"> · ${dateStr}</span>
             </span>
 
             <span style="font-size:12px;color:#999">
