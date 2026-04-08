@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"sort"
 	"github.com/stalltrix/kepweb/meta"
+	"github.com/stalltrix/kepweb/notify"
 )
 
 type Reply struct {
@@ -118,6 +119,7 @@ var (
 	logInfo logger.Log_TYPE
 	logWarn logger.Log_TYPE
 	logErr logger.Log_TYPE
+	selfdir string
 )
 
 //go:embed static/*
@@ -681,6 +683,10 @@ func initData() {
 	for i:=0;i<12;i++{
 		tags,err:=kepdb.ReadTag(i)
 		if err ==nil {
+			err=notify.Reg_fs(i,callback_renew)
+			if err!=nil {
+				logWarn.Println("reg tag err:",err)
+			}
 			for _,tag := range tags {
 				loadData(tag,false);}}
 	}
@@ -803,34 +809,42 @@ func getpostTime(hex string) int64 {
 	return 0
 }
 
-func auto_renew_data(){
-for {
-	time.Sleep(time.Second * 30)
-	newData:=renewData()
-	if newData !=nil {
-		for _,tag := range newData {
-			logDebug.Println("debug: access msg:",tag)
-			loadData(tag,true)
-		}
-	}
-}
-}
+func callback_renew(tag_id int){
+    idxPath := filepath.Join(selfdir, "tag_"+strconv.Itoa(tag_id)+".idx")
+    f, err := os.Open(idxPath)
+    if err != nil {
+		logWarn.Println("renew err:",err)
+        return
+    }
+    defer f.Close()
 
-func renewData() []string {
-	nodeUrlApi := "http://127.222.1.16:"+token_urlPort+"/local/api/interface?svc=msg&req=0&token="+token_UrlApi
-	resp, err := http.Get(nodeUrlApi)
-	if err != nil {
-		logWarn.Println("task err:",err)
-		return nil
-	}
-	defer resp.Body.Close()
-	var arr []string
-	err = json.NewDecoder(resp.Body).Decode(&arr)
-	if err != nil {
-		logWarn.Println("decode json err:",err)
-		return nil
-	}
-	return arr
+    stat, err := f.Stat()
+    if err != nil {
+		logWarn.Println("renew err:",err)
+        return
+    }
+
+    size := stat.Size()
+	
+	const lineSize = 65
+
+    for offset := size - lineSize; offset >= 0; offset -= lineSize {
+        buf := make([]byte, lineSize)
+
+        _, err := f.ReadAt(buf, offset)
+        if err != nil && err != io.EOF {
+			logWarn.Println("renew err:",err)
+            return
+        }
+		tag:=string(buf[:64])
+		_,ok:=二维指针.Load(tag)
+		if ok {
+			logDebug.Println("debug: renew endof:",tag)
+			return
+		}
+		logDebug.Println("debug: renew data:",tag)
+        loadData(tag,true)
+    }
 }
 
 func meHandler(w http.ResponseWriter, r *http.Request) {
@@ -908,7 +922,9 @@ func main() {
     if err == nil {
         self = filepath.Dir(exePath)
 		kepdb.Init_path(self)
+		selfdir=filepath.Join(self, "kep-data")
     }else{
+		selfdir="kep-data"
 		logger.Print("find self dir err: "+err.Error())
 		time.Sleep(time.Second*12)
 	}
@@ -988,6 +1004,7 @@ func main() {
     if err != nil {
         logger.Fatalln("Err: read user key err:",err)
     }
+	notify.Init_path(self)
 	initData()
     http.HandleFunc("/view/", viewHandler)
     http.HandleFunc("/index/", indexHandler)
@@ -1008,7 +1025,7 @@ func main() {
 		logger.Fatal("Err: listen addr is null:")
 		return
 	}
-	
+	notify.Done()
 	token_urlPort = cfg.Apiport
 	echoMeta = cfg.Metaon
 	
@@ -1025,9 +1042,9 @@ func main() {
 	}
 	logger.SetOutput(logpath)
 	}
-	go auto_renew_data();
 	go auto_renew_csrf();
 	go meta.NewTTLMap()
+	go startLimiterCleaner()
     logger.Fatalln(http.ListenAndServe(cfg.Listen, nil))
 }
 
@@ -1103,6 +1120,7 @@ case "list":{
     type ApiResp struct{
         State string   `json:"state"`
         Data  []string `json:"data"`
+		Url   []string `json:"url"`
     }
 
     var api ApiResp
@@ -1129,9 +1147,11 @@ case "list":{
     out := struct{
         State string   `json:"state"`
         Data  []string `json:"data"`
+		Url   []string `json:"url"`
     }{
         State:"OK",
         Data:result,
+		Url:api.Url,
     }
 
     w.Header().Set("Content-Type","application/json")
