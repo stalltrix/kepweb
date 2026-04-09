@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package postcodec;
+
+option go_package = "cache/postcodec";
+
+message PBReply {
+  int32  id = 1;
+  string user = 2;
+  string meta = 3;
+  bool   me = 4;
+  string post = 5;
+  int64  time = 6;
+  uint32 tag = 7;
+  string hex = 8;
+  int64  meta_time = 9;
+}
+
+message PBPost {
+  string post_hex = 1;
+  uint32 tag_id = 2;
+  string owner = 3;
+  repeated PBReply replies = 4;
+  int64 last_time = 5;
+  uint32 type_id = 6;
+}

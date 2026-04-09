@@ -23,6 +23,9 @@ type Config struct {
 	Apiport     string     `json:"api_port"`
 	Listen    string     `json:"listen"`
 	Ntp    string     `json:"ntp"`
+	Dbfile string     `json:"db_file"`
+	DbAddr string     `json:"db_addr"`
+	DbPass string     `json:"db_pass"`
     Neighbors []Neighbor `json:"neighbors"`
 }
 

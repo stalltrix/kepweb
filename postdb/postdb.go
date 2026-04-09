@@ -1,213 +1,319 @@
 package postdb
 
 import (
-	"database/sql"
-	_ "modernc.org/sqlite"
+	"context"
+	"github.com/redis/go-redis/v9"
+	"os"
+	"github.com/stalltrix/kepweb/postcodec"
+	"github.com/stalltrix/kep-demo/logger"
+	"sync"
+	"sync/atomic"
+	"time"
+	"math/rand"
+	"path/filepath"
+	"encoding/gob"
+	"io"
+	"strconv"
 )
 
-type Reply struct {
-	ID       int
-	User     string
-	Meta     string
-	Me       bool
-	Post     string
-	Time     int64
-	Tag      uint16
-	Hex      string
-	MetaTime int64
+type DataHandle struct {
+	ctx context.Context
+	rdb *redis.Client
 }
 
-type Post struct {
-	PostHex  string
-	TagID    uint16
-	Owner    string
-	Replies  []Reply
-	LastTime int64
-	TypeID   byte
+type loadData struct {
+	data *postcodec.Post
+	last int64
 }
 
-type Store struct {
-	db *sql.DB
-}
+var (
+	log logger.Log_TYPE
+	foundMap sync.Map
+	size atomic.Int64
+	lock atomic.Bool
+	rnd *rand.Rand
+	last_clean int64
+	is_init bool
+	local_path string
+	is_redis bool
+	localLock []sync.RWMutex
+)
 
-func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		return nil, err
+func Open(path,ipaddr,passwd string) (*DataHandle, error) {
+	if is_init {
+		return nil,os.ErrExist
 	}
-
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
-	pragmas := []string{
-		"PRAGMA journal_mode=WAL",
-		"PRAGMA synchronous=NORMAL",
-		"PRAGMA temp_store=MEMORY",
-		"PRAGMA mmap_size=536870912",
-	}
-
-	for _, p := range pragmas {
-		db.Exec(p)
-	}
-
-	schema := `
-CREATE TABLE IF NOT EXISTS post (
-	post_hex TEXT PRIMARY KEY,
-	tag_id INTEGER,
-	owner TEXT,
-	last_time INTEGER,
-	type_id INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS reply (
-	id INTEGER,
-	post_hex TEXT,
-	user TEXT,
-	meta TEXT,
-	me INTEGER,
-	post TEXT,
-	post_time INTEGER,
-	tag INTEGER,
-	hex TEXT,
-	meta_time INTEGER
-);
-
-CREATE INDEX IF NOT EXISTS idx_reply_post_time
-ON reply(post_hex, post_time);
-`
-
-	_, err = db.Exec(schema)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Store{db: db}, nil
-}
-
-func (s *Store) Store(p *Post) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(`
-INSERT OR REPLACE INTO post(post_hex, tag_id, owner, last_time, type_id)
-VALUES(?,?,?,?,?)`,
-		p.PostHex, p.TagID, p.Owner, p.LastTime, p.TypeID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	_, err = tx.Exec(`DELETE FROM reply WHERE post_hex=?`, p.PostHex)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	stmt, err := tx.Prepare(`
-INSERT INTO reply(id, post_hex, user, meta, me, post, post_time, tag, hex, meta_time)
-VALUES(?,?,?,?,?,?,?,?,?,?)`)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer stmt.Close()
-
-	for _, r := range p.Replies {
-		me := 0
-		if r.Me {
-			me = 1
+	if ipaddr==""{
+		if path =="" {
+			return nil,os.ErrNotExist
 		}
+		ok:=fileTest(path)
+		if !ok {
+			return nil,os.ErrPermission
+		}
+		local_path=path
+		is_init=true
+		localLock=make([]sync.RWMutex,256)
+		log.Println("Warn: local cache set, local cache only use for development environment")
+		return &DataHandle{},nil
+	}
+	ctx := context.Background()
+    rdb := redis.NewClient(&redis.Options{
+        Addr:     ipaddr,
+        Password: passwd,
+        DB:       0,
+    })
+	_, err := rdb.Ping(ctx).Result()
+    if err != nil {
+       return nil,err
+    }
+	st:=&DataHandle{
+		ctx:ctx,
+		rdb:rdb,
+	}
+	is_redis=true
+	is_init=true
+	return st,nil
+}
 
-		_, err = stmt.Exec(
-			r.ID,
-			p.PostHex,
-			r.User,
-			r.Meta,
-			me,
-			r.Post,
-			r.Time,
-			r.Tag,
-			r.Hex,
-			r.MetaTime,
-		)
-		if err != nil {
-			tx.Rollback()
-			return err
+func (s *DataHandle) Store(hex string,p *postcodec.Post) {
+	found:=&loadData{
+		data: p,
+		last: time.Now().Unix(),
+	}
+	_,loaded := foundMap.LoadOrStore(hex,found)
+    if !loaded {
+		size.Add(1)
+    } else {
+		foundMap.Store(hex,found)
+	}
+	if size.Load() > 90000 {
+		now:=time.Now().Unix()
+		if last_clean+120 < now {
+			last_clean=now
+			go clean(s)
 		}
 	}
-
-	return tx.Commit()
 }
 
-func (s *Store) Load(postHex string) (*Post, error) {
-	row := s.db.QueryRow(`
-SELECT post_hex, tag_id, owner, last_time, type_id
-FROM post WHERE post_hex=?`, postHex)
-
-	p := &Post{}
-	err := row.Scan(&p.PostHex, &p.TagID, &p.Owner, &p.LastTime, &p.TypeID)
+func (s *DataHandle) Load(hex string) (*postcodec.Post, bool) {
+	val,ok:=foundMap.Load(hex)
+	if ok {
+		dat:=val.(*loadData)
+		dat.last=time.Now().Unix()
+		return dat.data,true
+	}
+	var v []byte
+	var err error
+	if is_redis{
+		v, err = s.rdb.Get(s.ctx, hex).Bytes()
+	} else {
+		v, err = localget(hex)
+	}
 	if err != nil {
-		return nil, err
+		return nil,false
 	}
-
-	rows, err := s.db.Query(`
-SELECT id, user, meta, me, post, post_time, tag, hex, meta_time
-FROM reply
-WHERE post_hex=?
-ORDER BY post_time`, postHex)
-	if err != nil {
-		return nil, err
+	if len(v)<4{
+		return nil,false
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var r Reply
-		var me int
-
-		err = rows.Scan(
-			&r.ID,
-			&r.User,
-			&r.Meta,
-			&me,
-			&r.Post,
-			&r.Time,
-			&r.Tag,
-			&r.Hex,
-			&r.MetaTime,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if me == 1 {
-			r.Me = true
-		}
-
-		p.Replies = append(p.Replies, r)
+	p, err := postcodec.Decode(v)
+    if err != nil {
+		log.Println("postdb: decode err:",err)
+        return nil,false
+    }
+	
+	newfound:=&loadData{
+		data: &p,
+		last: time.Now().Unix(),
 	}
-
-	return p, nil
+	_,loaded := foundMap.LoadOrStore(hex,newfound)
+    if !loaded {
+		size.Add(1)
+    } else {
+		foundMap.Store(hex,newfound)
+	}
+	
+	return newfound.data,true
 }
 
-func (s *Store) Delete(postHex string) error {
-	tx, err := s.db.Begin()
+func (s *DataHandle) Delete(hex string) {
+	if _,ok := foundMap.LoadAndDelete(hex); ok {
+		size.Add(-1)
+	}
+	var err error
+	if is_redis{
+		err = s.rdb.Del(s.ctx, hex).Err()
+	} else {
+		err = localdel(hex)
+	}
 	if err != nil {
+		log.Println("postdb: del err:",err)
+		return
+	}
+}
+
+func clean(s *DataHandle){
+	ok := lock.CompareAndSwap(false, true)
+	if !ok {
+		return
+	}
+	defer lock.Store(false)
+	
+	i:=0
+	var keys []string
+	now:=time.Now().Unix()-60*60*6
+	foundMap.Range(func(k, v interface{}) bool {
+		val:= v.(*loadData)
+		if val.last<now{
+			 key := k.(string)
+			 keys = append(keys, key)
+			 i++
+		}
+        return i<60000
+    })
+	if len(keys) == 0 {
+		log.Println("load too high, clean fail")
+        return
+    }
+	
+	for _,hex:=range keys {
+		if rnd.Intn(3) != 0 {
+			if val,ok := foundMap.LoadAndDelete(hex); ok {
+				push_redis(hex,val.(*loadData),s)
+				size.Add(-1)
+			}
+		}
+	}
+}
+
+func push_redis(hex string,dat *loadData,s *DataHandle){
+	data, err := postcodec.Encode(dat.data)
+	if err != nil {
+		log.Println("postdb: encode err:",err)
+		return
+	}
+	if is_redis {
+		err = s.rdb.Set(s.ctx, hex, data, 0).Err()
+	} else {
+		err = localpush(hex,data)
+	}
+	if err != nil {
+		log.Println("postdb: set-key err:",err)
+		return
+	}
+}
+
+func localget(hex string) ([]byte,error) {
+	if len(hex)<4{
+		return nil,os.ErrNotExist
+	}
+	openPath:=local_path+hex[:2]
+	key,err:=strconv.ParseUint(hex[:2], 16, 8)
+	if err!=nil{
+		return nil,err
+	}
+	localLock[key].RLock()
+	file,err:=os.Open(openPath)
+	if err!=nil{
+		localLock[key].RUnlock()
+		return nil,err
+	}
+	defer func(){
+		file.Close()
+		localLock[key].RUnlock()
+	}()
+	mydb:=make(map[string][]byte)
+	err = gob.NewDecoder(file).Decode(&mydb)
+	if err !=nil {
+		return nil,err
+	}
+	val,ok:=mydb[hex]
+	if ok {
+		return val,nil
+	}
+	return nil,os.ErrNotExist
+}
+
+func localpush(hex string,data []byte) error{
+	if len(hex)<4{
+		return os.ErrNotExist
+	}
+	openPath:=local_path+hex[:2]
+	key,err:=strconv.ParseUint(hex[:2], 16, 8)
+	if err!=nil{
 		return err
 	}
-
-	_, err = tx.Exec(`DELETE FROM reply WHERE post_hex=?`, postHex)
-	if err != nil {
-		tx.Rollback()
+	localLock[key].Lock()
+	file,err:=os.OpenFile(openPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err!=nil{
+		localLock[key].Unlock()
 		return err
 	}
-
-	_, err = tx.Exec(`DELETE FROM post WHERE post_hex=?`, postHex)
-	if err != nil {
-		tx.Rollback()
+	defer func(){
+		file.Close()
+		localLock[key].Unlock()
+	}()
+	mydb:=make(map[string][]byte)
+	err = gob.NewDecoder(file).Decode(&mydb)
+	if err != nil && err != io.EOF {
 		return err
 	}
+	file.Truncate(0)
+	file.Seek(0,0)
+	mydb[hex]=data
+	return gob.NewEncoder(file).Encode(mydb)
+}
 
-	return tx.Commit()
+func localdel(hex string) error {
+	if len(hex)<4{
+		return os.ErrNotExist
+	}
+	openPath:=local_path+hex[:2]
+	key,err:=strconv.ParseUint(hex[:2], 16, 8)
+	if err!=nil{
+		return err
+	}
+	localLock[key].Lock()
+	file,err:=os.OpenFile(openPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err!=nil{
+		localLock[key].Unlock()
+		return err
+	}
+	defer func(){
+		file.Close()
+		localLock[key].Unlock()
+	}()
+	mydb:=make(map[string][]byte)
+	err = gob.NewDecoder(file).Decode(&mydb)
+	if err !=nil {
+		return err
+	}
+	file.Truncate(0)
+	file.Seek(0,0)
+	delete(mydb,hex)
+	return gob.NewEncoder(file).Encode(mydb)
+}
+
+func fileTest(file string) bool {
+	dir := filepath.Dir(file)
+	info, err := os.Stat(dir)
+	if err != nil {
+		return false 
+	}
+	if !info.IsDir() {
+		return false
+	}
+	temp, err := os.CreateTemp(dir, ".permcheck-*")
+	if err != nil {
+		return false
+	}
+	name := temp.Name()
+	temp.Close()
+	os.Remove(name)
+	return true
+}
+
+func init(){
+	log.SetLevel("info")
+	rnd=rand.New(rand.NewSource(time.Now().UnixNano()))
 }
