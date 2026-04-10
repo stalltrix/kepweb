@@ -508,7 +508,7 @@ func loadData(tag string,renew bool){
 			if point_to != nil {
 				//回帖子内容，跳过
 				if !renew{
-					logDebug.Println("回帖子内容，跳过")
+					//logDebug.Println("回帖子内容，跳过")
 				} else {
 					o_hex:=hex.EncodeToString(point_to)
 					o_hexs,err:=kepdb.ReadHash(o_hex)
@@ -784,6 +784,10 @@ func initData() {
 	will_change_reply=nil
 	}
 	
+	err=notify.Reg_fs(65534,callback_renew)
+	if err!=nil {
+		logWarn.Println("reg tag err:",err)
+	}
 	sort.Slice(sortList[:sortIdx], func(i, j int) bool {
 		if sortList[i]==""||sortList[j]==""{
 			return false
@@ -1177,6 +1181,7 @@ case "ban":{
 		io.WriteString(w, formatError(err))
 		return
 	}
+	logWarn.Println("[management log] ban domain:"+act+" reason:"+Ner_url)
 	io.WriteString(w,`{"state":"`+string(body)+`"}`)
 }
 case "unban":{

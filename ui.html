@@ -754,7 +754,7 @@ ${item.typeid}
 		
 		${canreply ? `
 <div class="reply-icon">
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" onclick="btnreply()">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" onclick="btnreply('${displayName}')">
   <path d="M10 9V5L3 12L10 19V15C15 15 18 16.5 21 20C20 14 17 9 10 9Z" 
         fill="#555"/>
 </svg>
@@ -819,8 +819,10 @@ ${item.typeid}
 };
 
 window.onload = () => app.init();
-function btnreply() {
-    alert('暂未实现，建议手动@用户，或markdown "> text..."引用标识')
+function btnreply(user) {
+    let lastInput=document.getElementById('r_payload').value
+	lastInput=lastInput+'@'+user+' '
+	document.getElementById('r_payload').value=lastInput
 };
 </script>
 </body>

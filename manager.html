@@ -146,6 +146,7 @@ input,textarea{
 <h3>封禁域名 PSL</h3>
 
 <input id="banDomain" placeholder="输入域名 example.com">
+<input id="banReason" placeholder="理由">
 
 <button class="btn" onclick="banUser()">封禁</button> 
 </div>
@@ -362,13 +363,13 @@ alert(res.state)
 function banUser(){
 
 const domain=document.getElementById("banDomain").value.trim()
-
-if(!domain){
-alert("请输入域名")
+const reason=document.getElementById("banReason").value.trim()
+if(!domain||!reason){
+alert("请输入域名和理由")
 return
 }
 
-api("ban",domain).then(res=>{
+api("ban",domain,reason).then(res=>{
 alert(res.state)
 })
 

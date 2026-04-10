@@ -6,6 +6,8 @@ import (
 	"os"
 	"github.com/stalltrix/kepweb/postcodec"
 	"github.com/stalltrix/kep-demo/logger"
+	"github.com/stalltrix/kep-demo/kepdb"
+	"github.com/stalltrix/kep-demo/kepresolv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +16,9 @@ import (
 	"encoding/gob"
 	"io"
 	"strconv"
+	"sort"
+	"bytes"
+	hx "encoding/hex"
 )
 
 type DataHandle struct {
@@ -37,6 +42,7 @@ var (
 	local_path string
 	is_redis bool
 	localLock []sync.RWMutex
+	rebuildLock atomic.Bool
 )
 
 func Open(path,ipaddr,passwd string) (*DataHandle, error) {
@@ -110,17 +116,24 @@ func (s *DataHandle) Load(hex string) (*postcodec.Post, bool) {
 	} else {
 		v, err = localget(hex)
 	}
-	if err != nil {
+	var p postcodec.Post
+	if err != nil || len(v)<4 {
+		_,err=kepdb.FindFile(hex + ".txt")
+		if err!=nil{
 		return nil,false
-	}
-	if len(v)<4{
-		return nil,false
-	}
-	p, err := postcodec.Decode(v)
+		}
+		pp,ok:=reBuildPost(hex)
+		if !ok {
+			return nil,false
+		}
+		p=*pp
+	} else {
+	p, err = postcodec.Decode(v)
     if err != nil {
 		log.Println("postdb: decode err:",err)
         return nil,false
     }
+	}
 	
 	newfound:=&loadData{
 		data: &p,
@@ -311,6 +324,100 @@ func fileTest(file string) bool {
 	temp.Close()
 	os.Remove(name)
 	return true
+}
+
+func reBuildPost(tag string) (*postcodec.Post,bool) {
+	ok := rebuildLock.CompareAndSwap(false, true)
+	if !ok {
+	//重建是情分
+		return nil,false
+	}
+	defer rebuildLock.Store(false)
+	hexs,err:=kepdb.ReadHash(tag)
+	if err !=nil {
+		return nil,false
+	}
+	dat,err:=kepresolv.Resolv(hexs)
+	if err !=nil {
+		return nil,false
+	}
+	if dat.Apoint_to != nil {
+		return nil,false
+	}
+	txt:=dat.Atxt
+	domain:=dat.Adomain
+	timestamp:=dat.Atimestamp
+	perm:=dat.Aperm
+	key_des:=dat.Akey_des
+	tag_i:=dat.Atag2
+	var newRly = []postcodec.Reply{{ID: 1, User: string(domain), Meta: "", Me: true, Post: string(txt), Time: timestamp, Tag: tag_i, Hex: tag},}
+	var lastID=2
+	subs,err:=kepdb.ReadSub(tag)
+	if err ==nil {
+for _,sub := range subs {
+	hex_byte,err:=kepdb.ReadHash(sub)
+	if err ==nil {
+	dat,err:=kepresolv.Resolv(hex_byte)
+	if err !=nil {
+	log.Println("load data err:",err)
+	continue;
+	}
+ txt2:=dat.Atxt
+ domain2:=dat.Adomain
+ timestamp2:=dat.Atimestamp
+ point_to2:=dat.Apoint_to
+ perm2:=dat.Aperm
+ key_des2:=dat.Akey_des
+ tagi2:=dat.Atag2
+	if tagi2 == 65534 {
+		o_hex2:=hx.EncodeToString(point_to2)
+		if o_hex2 == tag {
+		if (key_des == key_des2) && bytes.Equal(domain,domain2) {
+			if timestamp2 > newRly[0].Time{
+			newRly[0]=postcodec.Reply{
+    ID:   1,
+    User: string(domain2),
+    Meta: "",
+    Me:   true,
+    Post: string(txt2),
+    Time: timestamp2,
+	Tag: tag_i,
+	Hex: tag,
+			}
+	perm=perm2
+		}}
+		}
+		continue;
+	}
+ newRly = append(newRly, postcodec.Reply{
+    ID:   lastID,
+    User: string(domain2),
+    Meta: "",
+    Me:   (key_des == key_des2) && bytes.Equal(domain,domain2),
+    Post: string(txt2),
+    Time: timestamp2,
+	Tag: tagi2,
+	Hex: sub,
+ })
+ lastID++
+	}
+}
+			}
+	sort.Slice(newRly, func(i, j int) bool {
+		if i==0||j==0{
+			return false
+		}
+		return newRly[i].Time < newRly[j].Time
+	})
+	val:=&postcodec.Post{
+        PostHex: tag,
+        TagID:   tag_i,
+        Owner:   string(domain),
+        LastTime: timestamp,
+        Replies: newRly,
+		TypeID: perm,
+    }
+	return val,true
 }
 
 func init(){

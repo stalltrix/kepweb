@@ -2,24 +2,6 @@
 
 kep webUI 界面，取代默认的kepcli，实现发帖/回帖/修改 webUI化
 
-#### 更新：2026/04/09
-
-v0.1.7版本
-
-- 优化了内存占用
-
-此次更新添加了redis缓存(可选)，优化了post结构体占用。解决潜在内存泄露
-
-如果设置`db_addr`将自动启动redis缓存，`db_file`为指定gob缓存文件。如果留空将自动生成。
-
-
-完整配置参考 `config.json`
-
-<br>
-
-
----
-
 配置方法：
 
 neighbors指向自己的阶段，token填local_token
