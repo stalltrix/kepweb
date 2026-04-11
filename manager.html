@@ -132,6 +132,7 @@ input,textarea{
 <li><a onclick="showPanel('post')">帖子管理</a></li>
 <li><a onclick="showPanel('toppost')">置顶管理</a></li>
 <li><a onclick="showPanel('changetag')">分类管理</a></li>
+<li><a onclick="showPanel('setperm')">权限管理</a></li>
 </ul>
 
 </div>
@@ -250,6 +251,20 @@ input,textarea{
 <input id="tagval" placeholder="新标签(数字)">
 
 <button class="btn" onclick="tagPost()">修改</button>
+
+</div>
+
+</div>
+<div id="setperm" class="panel" style="display:none">
+
+<div class="card">
+
+<h3>权限管理</h3>
+
+<input id="permID" placeholder="输入帖子ID">
+
+<button class="btn" onclick="permPost(1)">加权</button>
+<button class="btn" onclick="permPost(0)">解锁</button>
 
 </div>
 
@@ -454,6 +469,21 @@ return
 }
 
 api("tag",id,newtag).then(res=>{
+alert(res.state)
+})
+
+}
+
+function permPost(set){
+
+const id=document.getElementById("permID").value.trim()
+
+if(!id){
+alert("请输入帖子ID")
+return
+}
+
+api("perm",id,String(set)).then(res=>{
 alert(res.state)
 })
 

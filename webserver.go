@@ -100,6 +100,8 @@ var (
 	logWarn logger.Log_TYPE
 	logErr logger.Log_TYPE
 	selfdir string
+	patch_perm sync.Map
+	patch_file string
 )
 
 //go:embed static/*
@@ -193,6 +195,11 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	
 	if !is_login {
 		if post.TypeID != 0 {
+			http.Error(w, "post not found", http.StatusNotFound)
+			return
+		}
+		_,ok:=patch_perm.Load(postHex)
+		if ok {
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
@@ -1040,6 +1047,15 @@ func main() {
 	token_urlPort = cfg.Apiport
 	echoMeta = cfg.Metaon
 	
+	patch_file=cfg.Permfile
+	if patch_file=="" {
+		patch_file=filepath.Join(self, "perm.ini")
+	}
+	err=pbbLoad()
+	if err != nil {
+		logWarn.Println("Warn: load perm file:",err)
+	}
+	
 	if token_urlPort == "" {
 		token_urlPort="10428"
 	}
@@ -1203,6 +1219,46 @@ case "pmsg":{
 	//私信
 	//TODO:
 	io.WriteString(w,`{"state":"TODO..."}`)
+}
+case "perm":{
+	_,ok:=dbStore.Load(act)
+	if !ok {
+		io.WriteString(w,`{"state":"set-perm: post not found"}`)
+		return
+	}
+	if Ner_url != "0" && Ner_url != "1" {
+		io.WriteString(w,`{"state":"new perm is null"}`)
+		return
+	}
+	//管理员界面，先默认无并发。以后再完善
+	if Ner_url == "0" {
+		//remove
+		_,ok=patch_perm.Load(act)
+		if ok {
+			err = removeKey(act)
+			if err != nil {
+				io.WriteString(w, formatError(err))
+				return
+			}
+			patch_perm.Delete(act)
+		}
+	} else {
+		//add
+		f,err:= os.OpenFile(patch_file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			io.WriteString(w, formatError(err))
+			return
+		}
+		_, err = f.WriteString(act+":1\n")
+		if err != nil {
+			f.Close()
+			io.WriteString(w, formatError(err))
+			return
+		}
+		f.Close()
+		patch_perm.Store(act,struct{}{})
+	}
+	io.WriteString(w,`{"state":"set-perm: OK"}`)
 }
 case "resend":{
 	var out [32]byte
@@ -1675,4 +1731,42 @@ func fromHex(c byte) int8 {
         return int8(c - 'A' + 10)
     }
     return -1
+}
+
+func pbbLoad() error {
+	data, err := os.ReadFile(patch_file)
+    if err != nil {
+		if os.IsNotExist(err) { return nil; }
+        return err
+    }
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
+        kv := strings.SplitN(line, ":", 2)
+        if len(kv) != 2 {
+            continue
+        }
+		logInfo.Println("load patch perm",kv[0])
+        patch_perm.Store(kv[0],struct{}{})
+    }
+	return nil
+}
+
+func removeKey(key string) error {
+    data, err := os.ReadFile(patch_file)
+    if err != nil {
+        return err
+    }
+    lines := strings.Split(string(data), "\n")
+    out := make([]string, 0, len(lines))
+    for _, line := range lines {
+        if strings.HasPrefix(line, key+":") {
+            continue
+        }
+        out = append(out, line)
+    }
+    return os.WriteFile(patch_file, []byte(strings.Join(out, "\n")), 0644)
 }

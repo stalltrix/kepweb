@@ -93,7 +93,7 @@ func (s *DataHandle) Store(hex string,p *postcodec.Post) {
     } else {
 		foundMap.Store(hex,found)
 	}
-	if size.Load() > 90000 {
+	if size.Load() > 80000 {
 		now:=time.Now().Unix()
 		if last_clean+120 < now {
 			last_clean=now
@@ -118,6 +118,9 @@ func (s *DataHandle) Load(hex string) (*postcodec.Post, bool) {
 	}
 	var p postcodec.Post
 	if err != nil || len(v)<4 {
+		if !is_redis{
+			return nil,false
+		}
 		_,err=kepdb.FindFile(hex + ".txt")
 		if err!=nil{
 		return nil,false
@@ -182,7 +185,7 @@ func clean(s *DataHandle){
 			 keys = append(keys, key)
 			 i++
 		}
-        return i<60000
+        return i<50000
     })
 	if len(keys) == 0 {
 		log.Println("load too high, clean fail")
@@ -224,6 +227,9 @@ func localget(hex string) ([]byte,error) {
 	key,err:=strconv.ParseUint(hex[:2], 16, 8)
 	if err!=nil{
 		return nil,err
+	}
+	if _, err := os.Stat(openPath); err != nil {
+		return nil, err
 	}
 	localLock[key].RLock()
 	file,err:=os.Open(openPath)

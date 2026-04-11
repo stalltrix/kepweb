@@ -26,6 +26,7 @@ type Config struct {
 	Dbfile string     `json:"db_file"`
 	DbAddr string     `json:"db_addr"`
 	DbPass string     `json:"db_pass"`
+	Permfile string   `json:"perm_file"`
     Neighbors []Neighbor `json:"neighbors"`
 }
 
