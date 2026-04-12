@@ -13,6 +13,8 @@
 	"db_file": "",
 	"db_addr": "",
 	"db_pass": "",
+	"vec_addr": "",
+	"vec_pass": "",
 	"perm_file": "",
 	"neighbors": [
 		{

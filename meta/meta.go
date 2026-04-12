@@ -30,13 +30,13 @@ for {
 }
 
 
-func dnsLookup(domain string) (string,string,error) {
+func dnsLookup(domain string) (string,string,string,error) {
 	txtRecords, err := net.LookupTXT(domain)
     if err != nil {
-        return "","",err
+        return "","","",err
     }
 	
-	var img,name string
+	var img,name,key string
 	
 	for _, txt := range txtRecords {
 		if len(txt) >= 4 && txt[:4] == "img=" {
@@ -47,19 +47,26 @@ func dnsLookup(domain string) (string,string,error) {
 			name=txt[4:]
 			continue;
 		}
+		if len(txt) >= 4 && txt[:4] == "kep=" {
+			key=txt[4:]
+			continue;
+		}
     }
 	if img==""&&name=="" {
-		return "","",errors.New("nslookup meta not found.")
+		return "","","",errors.New("nslookup meta not found.")
 	}
-	return img,name,nil
+	if len(key)>6 {
+		key=key[:6]
+	}
+	return img,name,strings.ToLower(key),nil
 }
 
-func Meta_get(domain,hexid string) (string,error) {
+func Meta_get(domain string) (string,error) {
 	val,ok:=metaMap.Load(domain)
 	if ok {
 		meta_str:=val.(*User_meta)
 		if meta_str.lasttime+3600 < time.Now().Unix() {
-			meta_data,err:=meta_renew(domain,hexid,true)
+			meta_data,err:=meta_renew(domain,true)
 			if err!=nil{
 				return "",err
 			}
@@ -68,7 +75,7 @@ func Meta_get(domain,hexid string) (string,error) {
 			return meta_str.meta_data,nil
 		}
 	}else{
-		meta_data,err:=meta_renew(domain,hexid,false)
+		meta_data,err:=meta_renew(domain,false)
 		if err!=nil{
 			return "",err
 		}
@@ -76,8 +83,8 @@ func Meta_get(domain,hexid string) (string,error) {
 	}
 }
 
-func meta_renew(domain,hexid string,is_exist bool) (string,error) {
-	img,name,err:=dnsLookup(domain)
+func meta_renew(domain string,is_exist bool) (string,error) {
+	img,name,hexid,err:=dnsLookup(domain)
 	if err != nil {
 	if is_exist {
 		val,ok:=metaMap.Load(domain)
@@ -122,6 +129,9 @@ func meta_renew(domain,hexid string,is_exist bool) (string,error) {
 			name=unicode
 		}
 		name=html.EscapeString(name)
+	}
+	if hexid!=""{
+		hexid=url.QueryEscape(hexid)
 	}
 	type User struct {
 		Name string `json:"name"`

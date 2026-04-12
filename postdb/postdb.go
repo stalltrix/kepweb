@@ -5,6 +5,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"os"
 	"github.com/stalltrix/kepweb/postcodec"
+	"github.com/stalltrix/kepweb/mapvec"
 	"github.com/stalltrix/kep-demo/logger"
 	"github.com/stalltrix/kep-demo/kepdb"
 	"github.com/stalltrix/kep-demo/kepresolv"
@@ -43,6 +44,9 @@ var (
 	is_redis bool
 	localLock []sync.RWMutex
 	rebuildLock atomic.Bool
+	ringbuf [8192]string
+	ringIdx uint32
+	ringlast int
 )
 
 func Open(path,ipaddr,passwd string) (*DataHandle, error) {
@@ -79,6 +83,7 @@ func Open(path,ipaddr,passwd string) (*DataHandle, error) {
 	}
 	is_redis=true
 	is_init=true
+	go ringTask(st)
 	return st,nil
 }
 
@@ -93,7 +98,7 @@ func (s *DataHandle) Store(hex string,p *postcodec.Post) {
     } else {
 		foundMap.Store(hex,found)
 	}
-	if size.Load() > 80000 {
+	if size.Load() > 30000 {
 		now:=time.Now().Unix()
 		if last_clean+120 < now {
 			last_clean=now
@@ -107,6 +112,11 @@ func (s *DataHandle) Load(hex string) (*postcodec.Post, bool) {
 	if ok {
 		dat:=val.(*loadData)
 		dat.last=time.Now().Unix()
+		if len(dat.data.Replies) > 255 {
+			idx:=atomic.AddUint32(&ringIdx, 1)
+			idx&=8191
+			ringbuf[idx]=hex
+		}
 		return dat.data,true
 	}
 	var v []byte
@@ -185,7 +195,7 @@ func clean(s *DataHandle){
 			 keys = append(keys, key)
 			 i++
 		}
-        return i<50000
+        return i<10000
     })
 	if len(keys) == 0 {
 		log.Println("load too high, clean fail")
@@ -200,6 +210,58 @@ func clean(s *DataHandle){
 			}
 		}
 	}
+}
+
+func ringTask(s *DataHandle){
+for {
+    time.Sleep(12 * time.Hour)
+    lastidx:=int(atomic.LoadUint32(&ringIdx))
+	if lastidx!=ringlast{
+		ok:=ringclean(s)
+		if ok {
+			ringlast=lastidx
+		}
+	}
+}
+}
+
+func ringclean(s *DataHandle) bool {
+	ok := lock.CompareAndSwap(false, true)
+	if !ok {
+		return false
+	}
+	defer lock.Store(false)
+	
+	var keys []string
+	now:=time.Now().Unix()-60*60*24
+	maxrange:=int(atomic.LoadUint32(&ringIdx))
+	if maxrange > 8192 {
+		maxrange=8192
+	}
+	for i:=1;i<maxrange;i++{
+		if ringbuf[i]==""{
+			continue
+		}
+		val,ok:=foundMap.Load(ringbuf[i])
+		if ok {
+			dat:=val.(*loadData)
+			if dat.last<now{
+				keys = append(keys, ringbuf[i])
+				ringbuf[i]=""
+			}
+		}
+	}
+	if len(keys) == 0 {
+        return true
+    }
+	
+	for _,hex:=range keys {
+		if val,ok := foundMap.LoadAndDelete(hex); ok {
+			push_redis(hex,val.(*loadData),s)
+			size.Add(-1)
+		}
+	}
+	return true
 }
 
 func push_redis(hex string,dat *loadData,s *DataHandle){
@@ -350,6 +412,10 @@ func reBuildPost(tag string) (*postcodec.Post,bool) {
 	if dat.Apoint_to != nil {
 		return nil,false
 	}
+	二维指针,err:=mapvec.Mux()
+	if err !=nil {
+		return nil,false
+	}
 	txt:=dat.Atxt
 	domain:=dat.Adomain
 	timestamp:=dat.Atimestamp
@@ -405,6 +471,11 @@ for _,sub := range subs {
 	Tag: tagi2,
 	Hex: sub,
  })
+  	newV:=mapvec.Map向量{
+		X: tag,
+		Y: lastID-1,
+	}
+	二维指针.Store(sub,newV)
  lastID++
 	}
 }
