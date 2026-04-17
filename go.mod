@@ -4,7 +4,7 @@ go 1.23.11
 
 require (
 	github.com/redis/go-redis/v9 v9.18.0
-	github.com/stalltrix/kep-demo v0.2.6
+	github.com/stalltrix/kep-demo v0.2.7
 	golang.org/x/time v0.12.0
 	google.golang.org/protobuf v1.36.11
 )

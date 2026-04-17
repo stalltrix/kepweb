@@ -12,6 +12,7 @@ import (
 	"github.com/stalltrix/kep-demo/kepresolv"
 	"github.com/stalltrix/kep-demo/send"
 	"github.com/stalltrix/kep-demo/ntp"
+	"github.com/stalltrix/kep-demo/limit"
 	"crypto/rand"
 	"encoding/hex"
 	"time"
@@ -211,6 +212,14 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
             w.WriteHeader(405)
             return
         }
+		
+		limitNum:=limit.GetLimit("reply:me")
+		if limitNum > 120 {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"status": "reply rate limit exceeded"}`))
+			return
+		}
+		
 		req.Tag=0 //回帖恒为0
 		hash,_:=async_send(req)
 		
@@ -1497,6 +1506,20 @@ func indexpage(w http.ResponseWriter, r *http.Request) {
                 w.Write([]byte("duplicate"))
                 return
             }
+			
+			if point_to == "" {
+				limitNum:=limit.GetLimit("topic:me")
+				if limitNum > 10 {
+					w.Write([]byte("topic rate limit exceeded"))
+					return
+				}
+			} else {
+				limitNum:=limit.GetLimit("chge:me")
+				if limitNum > 50 {
+					w.Write([]byte("change rate limit exceeded"))
+					return
+				}
+			}
 
 			sendNewPost(markdown,tagn,typeidn,point_to,point_to_root)
 

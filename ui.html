@@ -795,7 +795,14 @@ ${item.typeid}
 
         if (!res.ok) throw new Error('post reply error');
 
-        document.getElementById('r_payload').value = '';
+        const data = await res.json();
+		
+		if (data.status==="reply rate limit exceeded"){
+			alert("每半天最多回复120个帖子");
+			return;
+		}
+		
+		document.getElementById('r_payload').value = '';
 
         this.loadPost(this.currentHex);
 
