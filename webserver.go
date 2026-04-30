@@ -52,6 +52,7 @@ type ReplyRequest struct {
 	Tag int  `json:"tag"`
 	Point_to string  `json:"point_to"`
 	TypeID int  `json:"typeid"`
+	Nonce string `json:"nonce"`
 }
 
 type LoginType struct {
@@ -99,6 +100,7 @@ var (
 	selfdir string
 	patch_perm sync.Map
 	patch_file string
+	post_prefix string
 )
 
 //go:embed static/*
@@ -219,6 +221,18 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"status": "reply rate limit exceeded"}`))
 			return
 		}
+		
+		if !strings.HasPrefix(req.Nonce,post_prefix) {
+            w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"status": "post format err"}`))
+			return
+		}
+		
+		if !addNonce(req.Nonce) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"status": "duplicate"}`))
+            return
+        }
 		
 		req.Tag=0 //回帖恒为0
 		hash,_:=async_send(req)
@@ -841,7 +855,7 @@ func meHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"status":0}`))
 			return
 		}
-		w.Write([]byte(`{ "status":1, "user":"`+myself+`" }`))
+		w.Write([]byte(`{"status":1,"user":"`+myself+`","nonce":"`+post_prefix+`"}`))
 }
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -886,7 +900,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	time.AfterFunc(3600*24*15*time.Second, func() {
 		sessMap.Delete(sess)
 	})
-	w.Write([]byte(`{"status":1,"user":"`+myself+`"}`))
+	w.Write([]byte(`{"status":1,"user":"`+myself+`","nonce":"`+post_prefix+`"}`))
 }
 
 
@@ -1501,6 +1515,11 @@ func indexpage(w http.ResponseWriter, r *http.Request) {
                 w.Write([]byte("markdown too large"))
                 return
             }
+			
+			if !strings.HasPrefix(nonce,post_prefix) {
+				w.Write([]byte("post format err"))
+                return
+			}
 
             if !addNonce(nonce) {
                 w.Write([]byte("duplicate"))
@@ -1641,6 +1660,10 @@ for{
 	manager_csrf,err=randSess(8)
 	if err!=nil{
 		manager_csrf=sortList[sortIdx-1]
+	}
+	post_prefix,err=randSess(5)
+	if err!=nil{
+		post_prefix=strconv.Itoa(int(time.Now().Unix())&0xffff)
 	}
 	time.Sleep(time.Second*60*60*24)
 }

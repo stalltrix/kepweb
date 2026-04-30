@@ -397,6 +397,7 @@ const app = {
     pageSize: 16,
 	token: null,
 	currentUser: null,
+	currentNonce: null,
 
     openLogin() {
         document.getElementById('login-modal').style.display = 'flex';
@@ -448,6 +449,7 @@ const app = {
             if (data.status === 1) {
                 this.token = token;
 				this.currentUser = data.user;
+				this.currentNonce = data.nonce
 
                 msg.innerText = "登录成功";
 
@@ -477,6 +479,7 @@ const app = {
 
             this.token = true;
 			this.currentUser = data.user;
+			this.currentNonce = data.nonce;
 			this.enableReply();
             this.setLoggedIn();
 
@@ -488,6 +491,10 @@ const app = {
     } catch (e) {
         ;
     }
+	},
+	
+	generateNonce(){
+		return this.currentNonce+"_"+Math.random().toString(36).slice(2);
 	},
 	
 	setLoggedIn() {
@@ -781,7 +788,8 @@ ${item.typeid}
     const payload = {
         post_payload: document.getElementById('r_payload').value,
         tag: parseInt(this.currentTag),
-        point_to: this.currentHex
+        point_to: this.currentHex,
+		nonce: this.generateNonce()
     };
 
     try {
@@ -799,6 +807,16 @@ ${item.typeid}
 		
 		if (data.status==="reply rate limit exceeded"){
 			alert("每半天最多回复120个帖子");
+			return;
+		}
+		
+		if (data.status==="post format err"){
+			alert("格式错误");
+			return;
+		}
+		
+		if (data.status==="duplicate"){
+			alert("重复发送");
 			return;
 		}
 		
