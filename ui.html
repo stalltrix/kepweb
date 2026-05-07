@@ -626,7 +626,7 @@ const app = {
                     avatar = `<img src="${this.escapeHtml(metaObj.img)}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
                 } else {
 					const seed = encodeURIComponent(displayName);
-					avatar = `<img src="https://avatar.stalltrix.com/avatar?seed=${seed}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
+					avatar = `<img src="https://avatar.stalltrix.com/avatar/${seed}.svg" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
 				}
             }
 
@@ -686,7 +686,10 @@ ${item.typeid}
         try {
             const url = `${this.apiBase}/view/${this.currentTag}/${hex}`;
             const res = await fetch(url);
-            if (!res.ok) throw new Error('view api error');
+            if (!res.ok) {
+				container.innerHTML = '<div>页面不存在或已删除</div>';
+				return
+			}
 
             const data = await res.json();
             container.innerHTML = '';
@@ -700,7 +703,16 @@ ${item.typeid}
 
     const canEdit = this.currentUser && item.user === this.currentUser;
 	const canreply = (this.token != null)
-	const dateStr = new Date(item.post_time * 1000).toLocaleString();
+	
+	const postDate = new Date(item.post_time * 1000);
+	const firstDate = new Date(item.first_time * 1000);
+
+	const dateStr = `<span title="${postDate.toLocaleString()}">${timeAgo(postDate)}</span>`;
+	const firstPost = `<span title="${firstDate.toLocaleString()}">${timeAgo(firstDate)}</span>`;
+	
+	const timeStr = item.post_time === item.first_time
+  ? dateStr
+  : `${firstPost} edited ${dateStr}`;
 
     let metaObj = null;
     try {
@@ -728,7 +740,7 @@ ${item.typeid}
             avatar = `<img src="${this.escapeHtml(metaObj.img)}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
         } else {
 			const seed = encodeURIComponent(displayName);
-			avatar = `<img src="https://avatar.stalltrix.com/avatar?seed=${seed}" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
+			avatar = `<img src="https://avatar.stalltrix.com/avatar/${seed}.svg" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">`;
 		}
     }
 
@@ -740,7 +752,7 @@ ${item.typeid}
             <span class="comment-user ${item.me ? 'is-me' : ''}">
                 ${avatar}
                 #${item.id} ${displayName}${userSuffix} 
-				<span style="font-size:12px;color:#999"> · ${dateStr}</span>
+				<span style="font-size:12px;color:#999"> · ${timeStr}</span>
             </span>
 
             <span style="font-size:12px;color:#999">
@@ -848,6 +860,13 @@ function btnreply(user) {
     let lastInput=document.getElementById('r_payload').value
 	lastInput=lastInput+'@'+user+' '
 	document.getElementById('r_payload').value=lastInput
+};
+function timeAgo(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}days ago`;
 };
 </script>
 </body>

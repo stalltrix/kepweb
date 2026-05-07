@@ -9,6 +9,7 @@ type Reply struct {
     Me   bool   `json:"me"`
     Post string `json:"post"`
     Time int64  `json:"post_time"`
+	FirstTime int64 `json:"first_time"`
 	Tag  uint16  `json:"tag"`
 	Hex string  `json:"hex"`
 	MetaTime int64 `json:"-"`
