@@ -29,6 +29,7 @@ type Config struct {
 	VecAddr string     `json:"vec_addr"`
 	VecPass string     `json:"vec_pass"`
 	Permfile string   `json:"perm_file"`
+	Metaofffile string   `json:"metaoff_file"`
     Neighbors []Neighbor `json:"neighbors"`
 }
 
