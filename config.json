@@ -4,6 +4,7 @@
 	"priv_key": "pkey.priv",
 	"sig_key": "pkey.sig",
 	"domain": "user0.example.com",
+	"user": "admin",
 	"login_token": "[your login token]",
 	"api_token": "[your api token]",
 	"log_level": "info",

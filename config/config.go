@@ -16,6 +16,7 @@ type Config struct {
     PrivKey   string     `json:"priv_key"`
     SigKey    string     `json:"sig_key"`
     Domain    string     `json:"domain"`
+	User      string     `json:"user"`
 	Token     string     `json:"login_token"`
 	LogLevel string      `json:"log_level"`
 	Metaon    bool      `json:"meta_on"`

@@ -448,7 +448,8 @@ font-size: 14px;
 
 <div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:999;">
     <div style="background:#fff; padding:25px; border-radius:6px; width:320px;">
-        <h3 style="margin-bottom:15px;">Token 登录</h3>
+        <h3 style="margin-bottom:15px;">登录</h3>
+        <input type="text" id="api-user" placeholder="用户">
         <input type="text" id="api-token" placeholder="输入 API Token">
         <div style="text-align:right;">
             <button class="btn" onclick="app.doLogin()">Login</button>
@@ -511,6 +512,7 @@ const app = {
     location.href = "/index.php?manager=newpost&mod=true";
     },
     async doLogin() {
+	    const user = document.getElementById('api-user').value.trim();
         const token = document.getElementById('api-token').value.trim();
         const msg = document.getElementById('login-msg');
 
@@ -528,7 +530,7 @@ const app = {
                     "Content-Type": "application/json"
                 },
                 credentials: "include",
-                body: JSON.stringify({ token })
+                body: JSON.stringify({ user,token })
             });
 
             const data = await res.json();
