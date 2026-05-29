@@ -16,8 +16,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/redis/go-redis/v9 v9.18.0 h1:pMkxYPkEbMPwRdenAzUNyFNrDgHx9U+DrBabWNfSRQs=
 github.com/redis/go-redis/v9 v9.18.0/go.mod h1:k3ufPphLU5YXwNTUcCRXGxUoF1fqxnhFQmscfkCoDA0=
-github.com/stalltrix/kep-demo v0.2.7 h1:8406L+pczriMpXFp+7Tf2xasCV96inh6s9Rob/ZzuI8=
-github.com/stalltrix/kep-demo v0.2.7/go.mod h1:WAIc6l6uJLAyuNbRbF/wjlVjTYXoQT+pL0d8BzeXpIU=
+github.com/stalltrix/kep-demo v0.2.9 h1:rmmN5iiV50jT0aup6nH0VPzEv0MDfzM3HpbQyF4l3og=
+github.com/stalltrix/kep-demo v0.2.9/go.mod h1:WAIc6l6uJLAyuNbRbF/wjlVjTYXoQT+pL0d8BzeXpIU=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/zeebo/xxh3 v1.0.2 h1:xZmwmqxHZA8AI603jOQ0tMqmBr9lPeFwGg6d+xy9DC0=

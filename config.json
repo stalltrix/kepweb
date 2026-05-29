@@ -18,6 +18,14 @@
 	"vec_pass": "",
 	"perm_file": "",
 	"metaoff_file": "",
+	"crt": "",
+	"key": "",
+	"custom_index": {
+		"http-code": 404,
+		"content-type": "text/plain; charset=utf-8",
+		"resp_file": "404.txt"
+	},
+	"custom_file404": "",
 	"neighbors": [
 		{
 			"url": "http://127.0.0.1:8081",

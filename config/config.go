@@ -10,6 +10,12 @@ type Neighbor struct {
     Token string `json:"token"`
 }
 
+type CustomData struct {
+    HTTPCode    int    `json:"http-code"`
+    ContentType string `json:"content-type"`
+    Pages_file  string `json:"resp_file"`
+}
+
 type Config struct {
     MainKey   string     `json:"mainkey"`
     PubKey    string     `json:"pub_key"`
@@ -32,6 +38,10 @@ type Config struct {
 	Permfile string   `json:"perm_file"`
 	Metaofffile string   `json:"metaoff_file"`
     Neighbors []Neighbor `json:"neighbors"`
+	Crt  string     `json:"crt"`
+	Key  string     `json:"key"`
+	CustomIdx CustomData `json:"custom_index"`
+	Custom404 string  `json:"custom_file404"`
 }
 
 func Resolv(filename string) (Config,error) {

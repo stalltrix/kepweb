@@ -70,6 +70,12 @@ type tokenLimiter struct {
     lastUsed  int64
 }
 
+type customIndex struct {
+    code int
+    ctype string
+    page []byte
+}
+
 var (
 	dbStore *postdb.DataHandle
 	fileIndex []byte
@@ -107,6 +113,9 @@ var (
 	adminLock sync.Mutex
 	owneruser string
 	lastchange string
+	fileServer http.Handler
+	custom_idx customIndex
+	custom_404 []byte
 )
 
 //go:embed static/*
@@ -222,7 +231,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
         }
 		
 		limitNum:=limit.GetLimit("reply:me")
-		if limitNum > 120 {
+		if limitNum > 100 {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"status": "reply rate limit exceeded"}`))
 			return
@@ -580,7 +589,8 @@ func loadData(tag string,renew bool){
 								if timestamp > o_post.Replies[nowV.Y].Time{
 								first_time:=o_post.Replies[nowV.Y].FirstTime
 								meta_data:=o_post.Replies[nowV.Y].Meta
-								o_post.Replies[nowV.Y]=postcodec.Reply{ID: nowV.Y+1, User: string(domain), Meta: meta_data, Me: false, Post: string(txt), Time: timestamp, FirstTime: first_time, Tag: o_tag_i, Hex: o_hex}
+								me_data:=o_post.Replies[nowV.Y].Me
+								o_post.Replies[nowV.Y]=postcodec.Reply{ID: nowV.Y+1, User: string(domain), Meta: meta_data, Me: me_data, Post: string(txt), Time: timestamp, FirstTime: first_time, Tag: o_tag_i, Hex: o_hex}
 								}
 							}
 						}}
@@ -706,7 +716,7 @@ func initData() {
 			for _,tag := range tags {
 				loadData(tag,false);}}
 	}
-	tags,err:=kepdb.ReadTag(65534)
+	/*tags,err:=kepdb.ReadTag(65534)
 	if err ==nil {
 	will_change_reply=make(map[string]postcodec.Reply);
 	for _,tag := range tags {
@@ -802,9 +812,9 @@ func initData() {
 		}
 	}
 	will_change_reply=nil
-	}
-	
-	err=notify.Reg_fs(65534,callback_change)
+	}*/
+	callback_change(65534)
+	err:=notify.Reg_fs(65534,callback_change)
 	if err!=nil {
 		logWarn.Println("reg tag err:",err)
 	}
@@ -888,7 +898,7 @@ func callback_change(tag_id int){
 	
 	const lineSize = 65
 
-    var changed_tag []string
+    var changed_tag string
 	for offset := size - lineSize; offset >= 0; offset -= lineSize {
         buf := make([]byte, lineSize)
 
@@ -904,10 +914,12 @@ func callback_change(tag_id int){
 		}
 		logDebug.Println("debug: renew data:",tag)
         loadData(tag,true)
-		changed_tag=append(changed_tag,tag)
+		if changed_tag=="" {
+			changed_tag=tag
+		}
     }
-	if len(changed_tag)>0{
-		lastchange=changed_tag[0]
+	if changed_tag!="" {
+		lastchange=changed_tag
 	}
 }
 
@@ -973,6 +985,31 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		sessMap.Delete(sess)
 	})
 	w.Write([]byte(`{"status":1,"user":"`+myself+`","nonce":"`+post_prefix+`"}`))
+}
+
+func router(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/" {
+		if custom_idx.code == 0 {
+			http.Redirect(w, r, "/index.php", http.StatusFound)
+			return
+		}
+		w.Header().Set("Content-Type", custom_idx.ctype)
+		w.WriteHeader(custom_idx.code)
+		w.Write(custom_idx.page)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/view/") { viewHandler(w,r); return;}
+	if strings.HasPrefix(r.URL.Path, "/index/") { indexHandler(w,r); return;}
+	if strings.HasPrefix(r.URL.Path, "/static/") { 
+		fileServer.ServeHTTP(w, r);
+		return;
+	}
+	if len(custom_404) >0 {
+		w.WriteHeader(404)
+		w.Write(custom_404)
+		return
+	}
+	http.NotFound(w, r)
 }
 
 
@@ -1088,8 +1125,7 @@ func main() {
     }
 	notify.Init_path(self)
 	initData()
-    http.HandleFunc("/view/", viewHandler)
-    http.HandleFunc("/index/", indexHandler)
+    http.HandleFunc("/", router)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/me", meHandler)
 	http.HandleFunc("/index.php", indexpage)
@@ -1097,11 +1133,9 @@ func main() {
 	
 	staticFS, _ := fs.Sub(staticFiles, "static")
 
-    http.Handle("/static/",
-        http.StripPrefix("/static/",
+    fileServer = http.StripPrefix("/static/",
             http.FileServer(http.FS(staticFS)),
-        ),
-    )
+        )
 	
 	if cfg.Listen == "" {
 		logger.Fatal("Err: listen addr is null:")
@@ -1131,7 +1165,33 @@ func main() {
 	if token_urlPort == "" {
 		token_urlPort="10428"
 	}
-    logWarn.Println("server started on: ",cfg.Listen)
+	if cfg.Custom404 != "" {
+		custom_404, err = os.ReadFile(cfg.Custom404)
+		if err != nil {
+			logger.Fatalln("Err: can't read custom file404:",err)
+		}
+		logWarn.Println("init: set custom 404 page",cfg.Custom404)
+	}
+	if cfg.CustomIdx.HTTPCode != 0 {
+		if cfg.CustomIdx.HTTPCode <200 || cfg.CustomIdx.HTTPCode > 599 {
+			logger.Fatalln("Err: can't set custom http-code with:",cfg.CustomIdx.HTTPCode)
+		}
+		if cfg.CustomIdx.ContentType == "" {
+			logger.Fatalln("Err: can't set content-type null")
+		}
+		custom_idx.code=cfg.CustomIdx.HTTPCode
+		custom_idx.ctype=cfg.CustomIdx.ContentType
+		custom_idx.page,err=os.ReadFile(cfg.CustomIdx.Pages_file)
+		if err != nil {
+			logger.Fatalln("Err: can't read custom api file:",err)
+		}
+		logWarn.Println("init: set custom api err page",cfg.CustomIdx.Pages_file)
+	}
+	if cfg.Crt !="" && cfg.Key !=""{
+		logWarn.Println("server started on HTTPS:",cfg.Listen)
+	} else {
+		logWarn.Println("server started on http:",cfg.Listen)
+	}
 	if argc >2 {
 	logfile:=os.Args[2]
 	logpath,err :=os.OpenFile(logfile,os.O_WRONLY|os.O_CREATE|os.O_APPEND,0644)
@@ -1144,7 +1204,11 @@ func main() {
 	go auto_renew_csrf();
 	go meta.NewTTLMap()
 	go startLimiterCleaner()
+	if cfg.Crt !="" && cfg.Key !=""{
+	logger.Fatalln(http.ListenAndServeTLS(cfg.Listen,cfg.Crt,cfg.Key, nil))
+	} else {
     logger.Fatalln(http.ListenAndServe(cfg.Listen, nil))
+	}
 }
 
 func managerHandler(w http.ResponseWriter, r *http.Request) {
