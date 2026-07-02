@@ -116,6 +116,7 @@ var (
 	fileServer http.Handler
 	custom_idx customIndex
 	custom_404 []byte
+	custom_static = make(map[string][]byte)
 )
 
 //go:embed static/*
@@ -987,6 +988,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":1,"user":"`+myself+`","nonce":"`+post_prefix+`"}`))
 }
 
+func topicHandler(w http.ResponseWriter, r *http.Request) {
+	hex := strings.TrimPrefix(r.URL.Path, "/t/topic/")
+	if !IsHex(hex) {
+	if len(custom_404) >0 {
+		w.WriteHeader(404)
+		w.Write(custom_404)
+		return
+	}
+	http.NotFound(w, r)
+	return
+	}
+	http.Redirect(w, r, "/index.php?topic="+hex, http.StatusFound)
+}
+
 func router(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" {
 		if custom_idx.code == 0 {
@@ -1000,10 +1015,35 @@ func router(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/view/") { viewHandler(w,r); return;}
 	if strings.HasPrefix(r.URL.Path, "/index/") { indexHandler(w,r); return;}
-	if strings.HasPrefix(r.URL.Path, "/static/") { 
-		fileServer.ServeHTTP(w, r);
+	if strings.HasPrefix(r.URL.Path, "/static/") {
+		urlPath:=strings.TrimPrefix(r.URL.Path, "/static/")
+		val,ok:=custom_static[urlPath]
+		if !ok {
+			fileServer.ServeHTTP(w, r);
+		} else {
+			ext_name:=filepath.Ext(urlPath)
+			switch ext_name {
+			case ".jpg",".jpeg",".png",".gif",".webp",".svg",".ico":
+				ext_name=ext_name[1:]
+				if ext_name=="svg" {ext_name="svg+xml"}
+				if ext_name=="ico" {ext_name="x-icon"}
+				if ext_name=="jpg" {ext_name="jpeg"}
+				w.Header().Set("Content-Type", "image/"+ext_name)
+			case ".html",".htm":
+				w.Header().Set("Content-Type", "text/html")
+			case ".css":
+				w.Header().Set("Content-Type", "text/css")
+			case ".js":
+				w.Header().Set("Content-Type", "application/javascript")
+			case ".xml",".json",".wasm":
+				ext_name=ext_name[1:]
+				w.Header().Set("Content-Type", "application/"+ext_name)
+			}
+			w.Write(val)
+		}
 		return;
 	}
+	if strings.HasPrefix(r.URL.Path, "/t/topic/") { topicHandler(w,r); return;}
 	if len(custom_404) >0 {
 		w.WriteHeader(404)
 		w.Write(custom_404)
@@ -1164,6 +1204,43 @@ func main() {
 	
 	if token_urlPort == "" {
 		token_urlPort="10428"
+	}
+	if cfg.StaticFile != "" {
+		entries, err := os.ReadDir(cfg.StaticFile)
+		if err != nil {
+			logger.Fatalln("Err: can't read custom static file:",err)
+		}
+		allowed := map[string]struct{}{
+			".jpg":  struct{}{},
+			".png":  struct{}{},
+			".gif":  struct{}{},
+			".webp": struct{}{},
+			".svg":  struct{}{},
+			".html":  struct{}{},
+			".htm":  struct{}{},
+			".css":  struct{}{},
+			".js":  struct{}{},
+			".txt":  struct{}{},
+			".xml":  struct{}{},
+			".ico":  struct{}{},
+			".json":  struct{}{},
+			".wasm":  struct{}{},
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				fileName:=strings.ToLower(entry.Name())
+				_,ok:=allowed[filepath.Ext(fileName)]
+				if !ok {
+					continue;
+				}
+				logInfo.Printf("init: set custom static: /static/%s\n",fileName)
+				custom_file, err := os.ReadFile(filepath.Join(cfg.StaticFile, fileName))
+				if err!=nil{
+					logger.Fatalln("ERR: load custom static:",err)
+				}
+				custom_static[fileName]=custom_file;
+			}
+		}
 	}
 	if cfg.Custom404 != "" {
 		custom_404, err = os.ReadFile(cfg.Custom404)

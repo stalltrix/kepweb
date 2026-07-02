@@ -48,9 +48,18 @@ const renderer = {
     return `<code>${htm}</code>`;
   },
    link({ href, title, tokens }) {
+	if (href.startsWith("https://meta.stalltrix.com/")||href.startsWith("https://www.kepdb.com/")){
+	const u = new URL(href);
+	if ((u.pathname=="/index.php" && u.search.startsWith("?topic=")) || u.pathname.startsWith("/t/topic/")){href=u.pathname+u.search+u.hash;}
+	}
 	if ((/^https?:\/\//i.test(href)) || (href.startsWith("/index.php?topic=")&&(!href.includes("&"))&&(!href.includes("%"))) || href.startsWith("/t/topic/")) {
     const text = this.parser.parseInline(tokens);
-    return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow"${
+    if (href[0]==='/' && href[1]!=='/'){
+	return `<a href="${href}" rel="noopener"${
+      title ? ` title="${escapeHTML(title)}"` : ""
+    }>${text}</a>`;
+	}
+	return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow"${
       title ? ` title="${escapeHTML(title)}"` : ""
     }>${text}</a>`;
 	}

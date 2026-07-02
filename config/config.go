@@ -40,6 +40,7 @@ type Config struct {
     Neighbors []Neighbor `json:"neighbors"`
 	Crt  string     `json:"crt"`
 	Key  string     `json:"key"`
+	StaticFile  string     `json:"static"`
 	CustomIdx CustomData `json:"custom_index"`
 	Custom404 string  `json:"custom_file404"`
 }

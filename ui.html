@@ -277,9 +277,13 @@ font-size: 14px;
 					<option value="6">数据/AI (6)</option>
 					<option value="7">项目/开源 (7)</option>
 					<option value="8">数码/电脑 (8)</option>
-					<option value="9">游戏/水 (9)</option>
+					<option value="9">龙门阵 (9)</option>
 					<option value="10">行业资讯 (10)</option>
 					<option value="11">公告/张贴 (11)</option>
+					<option value="12">服务器技术 (12)</option>
+					<option value="13">游戏 (13)</option>
+					<option value="14">闲聊 (14)</option>
+					<option value="15">推广 (15)</option>
                 </select>
             </div>
         </div>
@@ -473,9 +477,13 @@ const TAG_MAP = {
     6: {name:"数据/AI", color:"#16A085"},
     7: {name:"项目/开源", color:"#27AE60"},
     8: {name:"数码/电脑", color:"#2C3E50"},
-    9: {name:"游戏/水", color:"#F7941D"},
+    9: {name:"龙门阵", color:"#F7941D"},
     10: {name:"行业资讯", color:"#7F8C8D"},
-    11: {name:"公告/张贴", color:"#C4A812"}
+    11: {name:"公告/张贴", color:"#F2D84A"},
+	12: {name:"服务器技术", color:"#14CADD"},
+    13: {name:"游戏", color:"#9CD0BD"},
+    14: {name:"闲聊", color:"#679514"},
+    15: {name:"推广", color:"#C4A812"}
 };
 const app = {
     apiBase: '',
@@ -892,6 +900,11 @@ ${item.typeid}
         point_to: this.currentHex,
 		nonce: this.generateNonce()
     };
+	
+	if (!payload.post_payload || payload.post_payload.length<3) {
+		alert("回复不能为空");
+        return;
+	}
 
     try {
 
