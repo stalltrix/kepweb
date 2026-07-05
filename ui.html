@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stalltrix K</title>
+    <title>stalltrix</title>
 	<style>
         :root {
             --primary-color: #3498db;
@@ -264,7 +264,7 @@ font-size: 14px;
     <!-- 顶部导航 -->
     <header>
         <div class="nav-inner">
-            <div class="logo" onclick="app.goHome()">Stalltrix K</div>
+            <div class="logo" onclick="app.resetPage()">stalltrix</div>
             <div class="nav-controls">
                 <select id="tag-selector" onchange="app.changeTag(this.value)">
                     <option value="all">全部 (All)</option>
@@ -391,7 +391,7 @@ font-size: 14px;
             </li>
 
             <li>
-                <a href="#">
+                <a href="#" onclick="app.changeTag('rand')">
                     <span class="icon">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                             <path d="M4 7h16v2H4V7zm0 8h16v2H4v-2z"/>
@@ -609,21 +609,45 @@ const app = {
         document.getElementById('submit-btn').disabled = false;
     },
 
-    init() {
+    async init() {
     this.checkLogin();
 
     const params = new URLSearchParams(location.search);
     const topic = params.get("topic");
+	const page = params.get("p");
+	const tags = params.get("t");
 	if(/^[0-9a-f]+$/.test(topic)) {
         this.currentHex = topic;
         document.getElementById('list-view').style.display = 'none';
         document.getElementById('detail-view').style.display = 'block';
-        this.loadPost(topic);
+        await this.loadPost(topic);
+		const hash = location.hash;
+		if (hash&&hash.length>1){
+			let floor=hash.slice(1);
+			if (/^\d+$/.test(floor)){
+				if (floor>2){floor--;}
+				setTimeout(() => {
+				const jumpto=document.getElementById(`floor-${floor}`);
+				if (jumpto){
+				jumpto.scrollIntoView();
+				}
+				},200);
+			}
+		}
+    } else if (/^\d+$/.test(page)||/^\d+$/.test(tags)) {
+		if (tags&&tags.trim()!==''){
+			const tag = parseInt(tags);
+			if (!Number.isNaN(tag)&&tag>=0){this.changeTag(String(tag));}
+		}
+		if (page&&page.trim()!==''){
+			const pg = parseInt(page);
+			if (!Number.isNaN(pg)){this.goToPage(pg);}
+		}
     } else {
         this.loadIndex();
     }
 
-    window.addEventListener("popstate", (e) => {
+    window.addEventListener("popstate", async (e) => {
         const params = new URLSearchParams(location.search);
         const topic = params.get("topic");
 
@@ -631,23 +655,53 @@ const app = {
             this.currentHex = topic;
             document.getElementById('list-view').style.display = 'none';
             document.getElementById('detail-view').style.display = 'block';
-            this.loadPost(topic);
+            await this.loadPost(topic);
+			const hash = location.hash;
+			if (hash&&hash.length>1){
+			let floor=hash.slice(1);
+			if (/^\d+$/.test(floor)){
+			if (floor>2){floor--;}
+			setTimeout(() => {
+				const jumpto=document.getElementById(`floor-${floor}`);
+				if (jumpto){jumpto.scrollIntoView();}
+				},200);
+			}}
         } else {
             this.goHome(false);
         }
     });
 },
 
+    resetPage(){
+	    location.href="/index.php";
+	},
+
     goHome(push = true) {
 
     if (push) {
+		let pushstate='';
+		if (this.currentTag&&this.currentTag!=="all"&&this.currentTag!=="rand"){
+			pushstate=`?t=${this.currentTag}`;
+		}
+		if (this.currentPage&&this.currentPage>1){
+			if (pushstate!==''){
+				pushstate=pushstate+`&p=${this.currentPage}`;
+			} else {
+				pushstate=`?p=${this.currentPage}`;
+			}
+		}
+		if (pushstate!==''){
+		history.pushState({}, "", `/index.php${pushstate}`);
+		} else {
         history.pushState({}, "", "/index.php");
+		}
     }
 
     document.getElementById('list-view').style.display = 'block';
     document.getElementById('detail-view').style.display = 'none';
 
     this.currentHex = null;
+	document.title="stalltrix";
 
     window.scrollTo(0, 0);
 },
@@ -668,12 +722,18 @@ const app = {
         this.currentTag = tagId;
         this.currentPage = 1;
         this.loadIndex();
+		if (tagId&&tagId!=="all"&&tagId!=="rand"){history.pushState({t:tagId}, "", `/index.php?t=${tagId}`);}else{history.pushState({}, "", `/index.php`);}
     },
 
     goToPage(page) {
         if (page < 1) return;
         this.currentPage = page;
         this.loadIndex();
+		if (this.currentTag&&this.currentTag!=="all"&&this.currentTag!=="rand"){
+		history.pushState({t:this.currentTag,p:page}, "", `/index.php?t=${this.currentTag}&p=${page}`);
+		}else{
+		history.pushState({p:page}, "", `/index.php?p=${page}`);
+		}
     },
 
     async loadIndex() {
@@ -694,6 +754,8 @@ const app = {
                 listContainer.innerHTML = '<div class="card">暂无内容</div>';
                 return;
             }
+			
+			const setTop = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="24" fill="#303030"/><g clip-path="url(#clip)"><path d="M10.696 17.504c2.639-2.638 5.774-2.565 9.182-.696L32.62 9.745l-.721-4.958L43.213 16.1l-4.947-.71-7.074 12.73c1.783 3.638 1.942 6.544-.697 9.182l-7.778-7.778L6.443 41.556l11.995-16.31-7.742-7.742Z" stroke="#ffffff"  stroke-width="4" stroke-linejoin="round"/></g><defs><clipPath id="clip"><path d="M0 0h48v48H0z" fill="white"/></clipPath></defs></svg>`;
 
             data.forEach(item => {
                 const el = document.createElement('div');
@@ -739,10 +801,11 @@ ${item.typeid}
 </span>`;
             }
 			
+				const pinpost1 = (item.pintop && item.pintop ==1);
 				const tag = TAG_MAP[item.tag] || {name:"未知",color:"#999"};
                 el.innerHTML = `
                     <div style="flex:1">
-                        <div class="post-title">${this.escapeHtml(item.lastview)} ${typeBadge}</div>
+                        <div class="post-title">${this.escapeHtml(item.lastview)} ${typeBadge} ${pinpost1 ? setTop : ''}</div>
                         <div class="post-meta">
                         ${avatar}<span>${displayName}</span> · 
                             <span>Last active: ${dateStr}</span> ·  <span><b>in</b> ${tag.name}</span>
@@ -795,6 +858,21 @@ ${item.typeid}
 			const tag = TAG_MAP[data[0].tag] || {name:"未知",color:"#999"};
 			mytag.innerText = "/tag/"+tag.name+"("+String(data[0].tag)+")"
 			}
+	
+   if (!data.length){
+		container.innerHTML="暂无内容";
+		return;
+   } else {
+	const i = data[0].post.indexOf('\n');
+	let tt =i === -1?data[0].post:data[0].post.slice(0, i);
+	if (!tt.trimStart().startsWith('#')) {
+		document.title="帖子详情 - stalltrix";
+	} else {
+		tt = tt.replace(/^#+/, '');
+		tt = tt.trimStart();
+		document.title=tt+" - stalltrix";;
+	}
+   }
 
             data.forEach(item => {
 
@@ -845,7 +923,7 @@ ${item.typeid}
     el.className = 'comment-item';
 
     el.innerHTML = `
-        <div class="comment-header">
+        <div class="comment-header" id="floor-${item.id}">
             <span class="comment-user ${item.me ? 'is-me' : ''}">
                 ${avatar}
                 #${item.id} ${displayName}${userSuffix} 

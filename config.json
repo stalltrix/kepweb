@@ -27,6 +27,7 @@
 		"resp_file": "404.txt"
 	},
 	"custom_file404": "",
+	"skip_ssl_check": false,
 	"neighbors": [
 		{
 			"url": "http://127.0.0.1:8081",

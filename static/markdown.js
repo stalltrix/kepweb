@@ -1,5 +1,5 @@
 /**
- * kep markdown resolv v0.3.2 - a safe markdown parser
+ * kep markdown resolv v0.4 - a safe markdown parser
  * Copyright (c) 2024-2026, ALL kep Contributors. (MIT Licensed)
  * require marked v15.0.12
  */
@@ -63,11 +63,12 @@ const renderer = {
       title ? ` title="${escapeHTML(title)}"` : ""
     }>${text}</a>`;
 	}
-    return this.parser.parseInline(tokens);
+    const text = this.parser.parseInline(tokens);
+	return `\[${text}\]\(${escapeHTML(href)}\)`
   },
   image({ href, title, text }) {
     if (!/^https?:\/\//i.test(href)) {
-      return '!{Image Broken}';
+	  return `!\[${text}\]\(${escapeHTML(href)}\)`
     }
     if (text) {
      const parts = text.split("|");

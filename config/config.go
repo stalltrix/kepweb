@@ -40,9 +40,12 @@ type Config struct {
     Neighbors []Neighbor `json:"neighbors"`
 	Crt  string     `json:"crt"`
 	Key  string     `json:"key"`
+	SkipSSLchk bool `json:"skip_ssl_check"`
 	StaticFile  string     `json:"static"`
 	CustomIdx CustomData `json:"custom_index"`
 	Custom404 string  `json:"custom_file404"`
+	TrustCFIP bool `json:"trust_cfip"`
+	TrustFor string `json:"trust_forwarded"`
 }
 
 func Resolv(filename string) (Config,error) {
