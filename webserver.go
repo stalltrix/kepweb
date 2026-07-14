@@ -123,6 +123,7 @@ var (
 	isTrustCF bool
 	trustFor netip.Addr
 	skipSSLchk bool
+	loginPage []byte
 )
 
 //go:embed static/*
@@ -983,7 +984,55 @@ func meHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Write([]byte(`{"status":1,"user":"`+myself+`","nonce":"`+post_prefix+`"}`))
 }
+
+func logoffHandler(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodPost {
+			w.Write([]byte(`{"status":0}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		cookie, err := r.Cookie("seesion")
+		if err != nil {
+			w.Write([]byte(`{"status":0}`))
+			return
+		}
+		val,ok:=sessMap.Load(cookie.Value)
+		if !ok {
+			w.Write([]byte(`{"status":0}`))
+			return
+		}
+		
+		var req ReplyRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.Write([]byte(`{"status":0}`))
+			return
+		}
+		
+		if !strings.HasPrefix(req.Nonce,post_prefix) {
+			w.Write([]byte(`{"status":0}`))
+			return
+		}
+		expired:=val.(*time.Timer)
+		expired.Stop()
+		sessMap.Delete(cookie.Value)
+		w.Write([]byte(`{"status":1}`))
+}
+
 func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "text/html")
+		cookie, err := r.Cookie("seesion")
+		if err == nil {
+			_,ok:=sessMap.Load(cookie.Value)
+			if ok {
+				http.Redirect(w, r, "/index.php", http.StatusFound)
+				return
+			}
+		}
+		w.Write(loginPage)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	var req LoginType
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1084,10 +1133,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
     SameSite: http.SameSiteLaxMode,
 	}
     http.SetCookie(w, cookie)
-	sessMap.Store(sess,struct{}{})
-	time.AfterFunc(3600*24*15*time.Second, func() {
+	expired:=time.AfterFunc(3600*24*15*time.Second, func() {
 		sessMap.Delete(sess)
 	})
+	sessMap.Store(sess,expired)
 	w.Write([]byte(`{"status":1,"user":"`+myself+`","nonce":"`+post_prefix+`"}`))
 }
 
@@ -1195,6 +1244,11 @@ func main() {
 		logger.Fatalln("can't read manager.html",err)
 	}
 	
+	loginPage,err=os.ReadFile(filepath.Join(self, "login.html"))
+	if err!=nil {
+		logger.Fatalln("can't read login.html",err)
+	}
+	
 	cfg,err := config.Resolv(cfg_file)
 	if err!=nil {
 		logger.Fatalln("can't read config.json",err)
@@ -1278,6 +1332,7 @@ func main() {
 	initData()
     http.HandleFunc("/", router)
 	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/logoff", logoffHandler)
 	http.HandleFunc("/me", meHandler)
 	http.HandleFunc("/index.php", indexpage)
 	http.HandleFunc("/manager", managerHandler)

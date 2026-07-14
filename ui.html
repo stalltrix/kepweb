@@ -334,7 +334,7 @@ font-size: 14px;
                     <p><b>注意：</b>点击下方登录。 token登录</p>
                     <div class="sidebar-buttons">
                         <a href="javascript:void(0)" id="login-btn" onclick="app.openLogin()" class="sidebar-button blue">Sign In</a>
-                        <!--a href="#" class="sidebar-button green">Register</a-->
+                        <a href="javascript:void(0)" onclick="app.Logoff()" id="logoff-btn"  class="sidebar-button" style="display:none">注销</a>
                     </div>
                 </div>
 
@@ -496,7 +496,8 @@ const app = {
 	currentNonce: null,
 
     openLogin() {
-        document.getElementById('login-modal').style.display = 'flex';
+		location.href = "/login";
+        //document.getElementById('login-modal').style.display = 'flex';
     },
 
     closeLogin() {
@@ -544,7 +545,7 @@ const app = {
             const data = await res.json();
 
             if (data.status === 1) {
-                this.token = token;
+                this.token = true;
 				this.currentUser = data.user;
 				this.currentNonce = data.nonce
 
@@ -564,6 +565,35 @@ const app = {
 
         } catch (e) {
             msg.innerText = "网络错误";
+        }
+    },
+	async Logoff() {
+        const ok1 = confirm("确定要退出登录吗？");
+		if (!ok1) {
+			return
+		}
+        try {
+            const res = await fetch(`${this.apiBase}/logoff`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                credentials: "include",
+                body: JSON.stringify({nonce: this.generateNonce()})
+            });
+
+            const data = await res.json();
+            if (data.status === 1) {
+                this.token = null;
+				this.currentUser = null;
+				this.currentNonce = null
+                this.resetPage();
+            } else {
+                alert("退出失败");
+            }
+
+        } catch (e) {
+            alert("网络错误");
         }
     },
 	async checkLogin() {
@@ -597,11 +627,13 @@ const app = {
 	setLoggedIn() {
 
     const btn = document.getElementById('login-btn');
+	const btnoff = document.getElementById('logoff-btn');
 
     btn.innerText = "已登录";
     btn.onclick = null;
 
     btn.style.background = "#2ecc71";
+	btnoff.style.display="flex";
 	},
 
     enableReply() {
