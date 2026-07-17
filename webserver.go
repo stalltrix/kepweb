@@ -35,6 +35,7 @@ import (
 	"github.com/stalltrix/kepweb/postcodec"
 	"github.com/stalltrix/kepweb/mapvec"
 	"github.com/stalltrix/kepweb/randlist"
+	"github.com/stalltrix/kepweb/keyencode"
 	"net/netip"
 )
 
@@ -258,7 +259,13 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
         }
 		
 		req.Tag=0 //回帖恒为0
-		hash,_:=async_send(req)
+		hash,err:=async_send(req)
+		if err!=nil||hash=="" {
+			logErr.Println("send msg err:",err)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"status": "send msg err"}`))
+			return
+		}
 		
 		replyID:=len(post.Replies)+1
 		reply := postcodec.Reply{
@@ -1313,21 +1320,50 @@ func main() {
     if err != nil {
        logger.Fatalln("Err: read user key err:",err)
     }
+	mainPub,err=keyencode.AutoDecode(mainPub)
+	if err != nil {
+		logger.Fatalln("Err: key decode:",err)
+	}
+	if len(mainPub) != ed25519.PublicKeySize {
+		logger.Fatalln("Err: user mainkey, err size")
+	}
 	
 	pub, err = os.ReadFile(cfg.PubKey)
     if err != nil {
        logger.Fatalln("Err: read user key err:",err)
     }
+	pub,err=keyencode.AutoDecode(pub)
+	if err != nil {
+		logger.Fatalln("Err: key decode:",err)
+	}
+	if len(pub) != ed25519.PublicKeySize {
+		logger.Fatalln("Err: user pub key, err size")
+	}
 	
     priv, err = os.ReadFile(cfg.PrivKey)
     if err != nil {
         logger.Fatalln("Err: read user key err:",err)
     }
+	priv,err=keyencode.AutoDecode(priv)
+	if err != nil {
+		logger.Fatalln("Err: key decode:",err)
+	}
+	if len(priv) != ed25519.PrivateKeySize {
+		logger.Fatalln("Err: user Private key, err size")
+	}
 
     signKey, err = os.ReadFile(cfg.SigKey)
     if err != nil {
         logger.Fatalln("Err: read user key err:",err)
     }
+	signKey,err=keyencode.AutoDecode(signKey)
+	if err != nil {
+		logger.Fatalln("Err: key decode:",err)
+	}
+	if len(signKey) != ed25519.PrivateKeySize {
+		logger.Fatalln("Err: user signKey, err size")
+	}
+	
 	notify.Init_path(self)
 	initData()
     http.HandleFunc("/", router)
@@ -1957,7 +1993,11 @@ func indexpage(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			sendNewPost(markdown,tagn,typeidn,point_to,point_to_root)
+			err=sendNewPost(markdown,tagn,typeidn,point_to,point_to_root)
+			if err!=nil {
+				w.Write([]byte("send msg err"))
+				return
+			}
 
             w.Write([]byte("post ok"))
             return
@@ -2008,16 +2048,18 @@ func addNonce(nonce string) bool {
     return true
 }
 
-func sendNewPost(txt string,tag,typeid int,point_to,point_to_root string){
+func sendNewPost(txt string,tag,typeid int,point_to,point_to_root string) error {
 	var req ReplyRequest
 	req.PostPayload=txt
 	req.Tag = tag
 	req.TypeID = typeid
 	req.Point_to=point_to+point_to_root
         
-	hash,_:=async_send(req)
-	if hash == "" {
-		return
+	hash,err:=async_send(req)
+	if err!=nil||hash == "" {
+		if err==nil {err=os.ErrNotExist;}
+		logErr.Println("send msg err:",err)
+		return err
 	}
 	timestamp:=int64(time.Now().Unix())
 	var newRly = []postcodec.Reply{{ID: 1, User: myself, Meta: "", Me: true, Post: string(txt), Time: timestamp, FirstTime: timestamp, Tag: uint16(req.Tag), Hex: hash},}
@@ -2025,7 +2067,7 @@ func sendNewPost(txt string,tag,typeid int,point_to,point_to_root string){
 if req.Tag == 65534 {
 	NowV,ok:=二维指针.Load(point_to)
 	if !ok {
-		return
+		return os.ErrNotExist
 	}
 	o_post,ok:=dbStore.Load(NowV.X)
 	if ok {
@@ -2062,6 +2104,7 @@ if req.Tag == 65534 {
 }
 	sortList[sortIdx]=hash
 	sortIdx++
+	return nil
 }
 
 func unix40() []byte {
