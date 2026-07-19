@@ -96,6 +96,42 @@ func Key64_decode(data []byte) ([]byte, error) {
     return decoded[:n], nil
 }
 
+func PKCS_encode(data []byte) ([]byte,error){
+    priv, err := x509.MarshalPKCS8PrivateKey(ed25519.PrivateKey(data))
+    if err != nil {
+        return nil, err
+    }
+
+    privPem := pem.EncodeToMemory(&pem.Block{
+        Type:  "PRIVATE KEY",
+        Bytes: priv,
+    })
+
+    return privPem,nil
+}
+
+func PKCS_decode(data []byte) ([]byte,error){
+    privBlock, rest := pem.Decode(data)
+    if privBlock == nil {
+        return nil,errors.New("failed to decode private PEM")
+    }
+    if len(bytes.TrimSpace(rest)) != 0 {
+        return nil,errors.New("private PEM too many args")
+    }
+
+    privAny, err := x509.ParsePKCS8PrivateKey(privBlock.Bytes)
+    if err != nil {
+        return nil, err
+    }
+
+    parsedPriv, ok := privAny.(ed25519.PrivateKey)
+    if !ok {
+        return nil,errors.New("not ed25519 private key")
+    }
+
+    return parsedPriv,nil
+}
+
 func AutoDecode(data []byte) ([]byte,error){
 	ndata := bytes.TrimSpace(data)
     if bytes.HasPrefix(ndata, []byte("-----BEGIN")) && bytes.HasSuffix(ndata, []byte("KEY-----")){
@@ -103,6 +139,8 @@ func AutoDecode(data []byte) ([]byte,error){
 			return Key32_decode(data)
 		} else if bytes.HasPrefix(ndata, []byte("-----BEGIN RAW KEY-----")) {
 			return Key64_decode(data)
+		} else if bytes.HasPrefix(ndata, []byte("-----BEGIN PRIVATE KEY-----")) {
+			return PKCS_decode(data)
 		} else {
 			if len(data)==32||len(data)==64{
 				return data,nil
