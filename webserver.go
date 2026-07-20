@@ -1041,6 +1041,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	r.Body = http.MaxBytesReader(w, r.Body, 1 << 10)
 	var req LoginType
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         w.Write([]byte(`{"status":0}`))
@@ -1648,6 +1649,9 @@ case "pmsg":{
 	//私信
 	//TODO:
 	io.WriteString(w,`{"state":"TODO..."}`)
+}
+case "multiuser":{
+	io.WriteString(w,`{"state":"multi-user only for multi-webui, single-webui is unnecessary"}`)
 }
 case "metaoff":{
 	_,ok=meta_off[act]
