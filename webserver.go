@@ -13,6 +13,7 @@ import (
 	"github.com/stalltrix/kep-demo/send"
 	"github.com/stalltrix/kep-demo/ntp"
 	"github.com/stalltrix/kep-demo/limit"
+	"github.com/stalltrix/kep-demo/verify"
 	"crypto/rand"
 	"encoding/hex"
 	"time"
@@ -36,6 +37,7 @@ import (
 	"github.com/stalltrix/kepweb/mapvec"
 	"github.com/stalltrix/kepweb/randlist"
 	"github.com/stalltrix/kepweb/keyencode"
+	"github.com/stalltrix/kepweb/captcha"
 	"net/netip"
 )
 
@@ -62,6 +64,7 @@ type ReplyRequest struct {
 type LoginType struct {
 	User    string    `json:"user"`
     Token   string    `json:"token"`
+	Verify  string    `json:"captcha"`
 }
 
 type indexCache struct {
@@ -127,6 +130,7 @@ var (
 	trustFor netip.Addr
 	skipSSLchk bool
 	loginPage []byte
+	captchaon bool
 )
 
 //go:embed static/*
@@ -601,12 +605,18 @@ func async_send(payload ReplyRequest) (string,error) {
     msg := buf.Bytes()
 	hashHex := hex.EncodeToString(tHash)
 	
-	go func(){
+	_,err=verify.ParseAndVerify(msg)
+	if err != nil {
+		return hashHex,err
+	}
+	
+	//go func(){
 	err = send.Nextmsg(msg,"",skipSSLchk)
 	if err != nil {
-		logErr.Println("send msg err:",err)
+		//logErr.Println("send msg err:",err)
+		return hashHex,err
 	}
-	}()
+	//}()
 
 	return hashHex,nil
 }
@@ -1154,6 +1164,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
+	if captchaon {
+		if req.Verify==""{
+			logDebug.Println("login captcha is null")
+			w.Write([]byte(`{"status":0}`))
+			return
+		}
+		err=captcha.Verify_f(req.Verify)
+		if err !=nil {
+			logDebug.Println("login captcha fail",err)
+			w.Write([]byte(`{"status":0}`))
+			return
+		}
+	}
+	
 	ipaddr := user_ip
 	if len(user_ip) > 19 {
 		ipaddr=user_ip[:19]
@@ -1503,6 +1527,14 @@ func main() {
 			}
 		}
 	}
+	if cfg.Captcha.ServerAddr != "" && cfg.Captcha.SecretKey!="" {
+		if !strings.HasPrefix(cfg.Captcha.ServerAddr,"http"){
+			logger.Fatal("ERR: set captcha addr err: url format err, "+cfg.Captcha.ServerAddr)
+		}
+		logWarn.Println("init: set captcha on, addr:",cfg.Captcha.ServerAddr)
+		captchaon=true
+		captcha.Set(cfg.Captcha.ServerAddr,cfg.Captcha.SecretKey,cfg.Captcha.UA)
+	}
 	if cfg.Custom404 != "" {
 		custom_404, err = os.ReadFile(cfg.Custom404)
 		if err != nil {
@@ -1542,6 +1574,7 @@ func main() {
 	go auto_renew_csrf();
 	go meta.NewTTLMap()
 	go startLimiterCleaner()
+	go verify.NewTTLMap()
 	if cfg.Crt !="" && cfg.Key !=""{
 	logger.Fatalln(http.ListenAndServeTLS(cfg.Listen,cfg.Crt,cfg.Key, nil))
 	} else {

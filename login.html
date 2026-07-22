@@ -208,6 +208,7 @@ form.addEventListener("submit", async function(e){
 
     const user = document.getElementById("username").value.trim();
     const token = document.getElementById("password").value;
+	const captcha = "";
 
 	if(!user || !token){
 		messageBox.innerText="请输入用户名和密码";
@@ -226,7 +227,7 @@ form.addEventListener("submit", async function(e){
                 "Content-Type": "application/json"
             },
 			credentials:"include",
-            body:JSON.stringify({ user,token })
+            body:JSON.stringify({ user,token,captcha })
         });
 
         if(res.ok){
