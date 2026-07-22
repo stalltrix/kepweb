@@ -9,6 +9,8 @@ import (
 	"errors"
 )
 
+var ErrKeyType = errors.New("key type unknown")
+
 func Key32_encode(raw []byte) ([]byte,error){
 	if len(raw)!=32{
 		return nil,errors.New("32 key len err")
@@ -145,8 +147,11 @@ func AutoDecode(data []byte) ([]byte,error){
 			if len(data)==32||len(data)==64{
 				return data,nil
 			}
-			return nil,errors.New("key type unknown")
+			return nil,ErrKeyType
 		}
     }
-    return data,nil
+	if len(data)==32||len(data)==64{
+		return data,nil
+	}
+    return nil,ErrKeyType
 }
