@@ -353,7 +353,7 @@ font-size: 14px;
             </li>
 
             <li>
-                <a href="#">
+                <a href="#" onclick="app.changeTag('new')">
                     <span class="icon">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                             <path d="M10 13a5 5 0 117-7l1.5-1.5A7 7 0 109.5 15L11 13.5l-1-1zM14 11a5 5 0 11-7 7L5.5 19.5A7 7 0 1014.5 9L13 10.5l1 0.5z"/>
@@ -712,7 +712,7 @@ const app = {
 
     if (push) {
 		let pushstate='';
-		if (this.currentTag&&this.currentTag!=="all"&&this.currentTag!=="rand"){
+		if (this.currentTag&&this.currentTag!=="all"&&this.currentTag!=="rand"&&this.currentTag!=="new"){
 			pushstate=`?t=${this.currentTag}`;
 		}
 		if (this.currentPage&&this.currentPage>1){
@@ -754,14 +754,14 @@ const app = {
         this.currentTag = tagId;
         this.currentPage = 1;
         this.loadIndex();
-		if (tagId&&tagId!=="all"&&tagId!=="rand"){history.pushState({t:tagId}, "", `/index.php?t=${tagId}`);}else{history.pushState({}, "", `/index.php`);}
+		if (tagId&&tagId!=="all"&&tagId!=="rand"&&tagId!=="new"){history.pushState({t:tagId}, "", `/index.php?t=${tagId}`);}else{history.pushState({}, "", `/index.php`);}
     },
 
     goToPage(page) {
         if (page < 1) return;
         this.currentPage = page;
         this.loadIndex();
-		if (this.currentTag&&this.currentTag!=="all"&&this.currentTag!=="rand"){
+		if (this.currentTag&&this.currentTag!=="all"&&this.currentTag!=="rand"&&this.currentTag!=="new"){
 		history.pushState({t:this.currentTag,p:page}, "", `/index.php?t=${this.currentTag}&p=${page}`);
 		}else{
 		history.pushState({p:page}, "", `/index.php?p=${page}`);

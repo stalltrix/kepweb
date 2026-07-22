@@ -95,7 +95,9 @@ var (
 	token_UrlApi string
 	token_urlPort string
 	sortList [65536]string
+	newList [256]string
 	sortIdx uint16
+	newIdx byte
 	二维指针 *mapvec.DataHandle
 	limiterMap sync.Map
 	neighborTokenMap sync.Map
@@ -336,7 +338,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
         return
 	}
 	tag:=-1
-	if tagID != "all" && tagID != "rand" {
+	if tagID != "all" && tagID != "rand" && tagID != "new" {
 		tag,err=strconv.Atoi(tagID)
 		if err !=nil {
 			http.Error(w, "invalid page", http.StatusBadRequest)
@@ -376,7 +378,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	var posts []*postcodec.Post
-	if tagID != "rand" {
+	if tagID != "rand" && tagID != "new" {
 	diff :=make(map[string]bool)
 	i:=sortIdx
 	if top_post.Hex != "" {diff[top_post.Hex]=false;}
@@ -414,6 +416,26 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	} else if tagID == "new" {
+		diff :=make(map[string]bool)
+		i:=newIdx
+		if top_post.Hex != "" {diff[top_post.Hex]=false;}
+		for j:=0;j<256;j++{
+			i--
+			hex:=newList[i]
+			if hex == "" {
+				break
+			}
+			_,ok:=diff[hex]
+			if ok {
+				continue
+			}
+			post, ok := dbStore.Load(hex)
+			if ok {
+				diff[hex]=false
+				posts = append(posts, post)
+			}
+		}
 	} else {
 		if randlist.MustRenew() {
 			randlist.Renew(&sortList,sortIdx)
@@ -756,6 +778,8 @@ for _,sub := range subs {
 	二维指针.Store(tag,newV)
 	sortList[sortIdx]=tag
 	sortIdx++
+	newList[newIdx]=tag
+	newIdx++
 		}
 }
 
@@ -876,8 +900,28 @@ func initData() {
 		if sortList[i]==""||sortList[j]==""{
 			return false
 		}
-		return getpostTime(sortList[i]) < getpostTime(sortList[j])
+		return getLastPost(sortList[i]) < getLastPost(sortList[j])
 	})
+	sort.Slice(newList[:newIdx], func(i, j int) bool {
+		if newList[i]==""||newList[j]==""{
+			return false
+		}
+		return getpostTime(newList[i]) < getpostTime(newList[j])
+	})
+}
+
+func getLastPost(hex string) int64 {
+	if hex == "" {
+		return 0
+	}
+	post, ok := dbStore.Load(hex)
+	if ok {
+		if len(post.Replies)==0{
+			return 0
+		}
+		return post.Replies[len(post.Replies)-1].FirstTime
+	}
+	return 0
 }
 
 func getpostTime(hex string) int64 {
@@ -1310,7 +1354,7 @@ func main() {
 		nextroute[i].Auth=cfg.Neighbors[i].Token
 	}
 	
-	send.Send_Init(nextroute,"")
+	send.Send_Init(nextroute,cfg.Socks5,cfg.SkipSSLchk)
 	
 	if cfg.Ntp != "" {
 		ntp.Ntp_Init(cfg.Ntp)
@@ -2108,6 +2152,8 @@ if req.Tag == 65534 {
 }
 	sortList[sortIdx]=hash
 	sortIdx++
+	newList[newIdx]=hash
+	newIdx++
 	return nil
 }
 

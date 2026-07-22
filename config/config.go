@@ -30,6 +30,7 @@ type Config struct {
 	Apiport     string     `json:"api_port"`
 	Listen    string     `json:"listen"`
 	Ntp    string     `json:"ntp"`
+	Socks5    string     `json:"socks5"`
 	Dbfile string     `json:"db_file"`
 	DbAddr string     `json:"db_addr"`
 	DbPass string     `json:"db_pass"`
