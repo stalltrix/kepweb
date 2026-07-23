@@ -57,8 +57,6 @@ type Config struct {
 	Captcha CaptchaSet `json:"captcha"`
 }
 
-var log logger.Log_TYPE
-
 func Resolv(filename string) (Config,error) {
 	var cfg Config
     data, err := os.ReadFile(filename)
@@ -67,13 +65,12 @@ func Resolv(filename string) (Config,error) {
     }
     err = json.Unmarshal(data, &cfg)
     if err != nil {
-		log.SetLevel("info")
-		log.Println("Warn: decode json err:",err,",try decode with jsonc")
+		logger.Print("Warn: decode json err:"+err.Error()+",try decode with jsonc")
 		err = json.Unmarshal(removejsonc(data), &cfg)
 		if err != nil {
 			return cfg,err
 		}
-		log.Println("Warn: decode with jsonc success")
+		logger.Print("Warn: decode with jsonc success")
     }
     return cfg,nil
 }

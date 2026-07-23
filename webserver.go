@@ -1297,6 +1297,12 @@ func main() {
 		return
 	}
 	cfg_file:=os.Args[1]
+	
+	if cfg_file=="-v" {
+		logger.Print("webserver: v0.2.9")
+		return
+	}
+	
 	var err error
 	self:=""
 	exePath, err := os.Executable()
