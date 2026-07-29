@@ -189,6 +189,8 @@ func getLimiter(ipaddr string) *rate.Limiter {
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
     // /view/{tag_id}/{post_hex}
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	w.Header().Set("Vary", "Cookie")
     parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
     if len(parts) != 3 {
         http.Error(w, "bad request", http.StatusBadRequest)
@@ -324,6 +326,8 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
     // /index/{tag_id}/{page_idx}
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	w.Header().Set("Vary", "Cookie")
     parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
     if len(parts) != 3 {
         http.Error(w, "bad request", http.StatusBadRequest)
@@ -1033,6 +1037,8 @@ func callback_change(tag_id int){
 
 func meHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		w.WriteHeader(401)
 		cookie, err := r.Cookie("seesion")
 		if err != nil {
 			w.Write([]byte(`{"status":0}`))
@@ -1048,11 +1054,12 @@ func meHandler(w http.ResponseWriter, r *http.Request) {
 
 func logoffHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		w.WriteHeader(401)
 		if r.Method != http.MethodPost {
 			w.Write([]byte(`{"status":0}`))
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
 		cookie, err := r.Cookie("seesion")
 		if err != nil {
 			w.Write([]byte(`{"status":0}`))
@@ -1091,6 +1098,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		w.Write(loginPage)
 		return
 	}
@@ -2001,6 +2009,8 @@ func indexpage(w http.ResponseWriter, r *http.Request) {
 
     if manager != "" || r.Method == http.MethodPost {
 
+        w.Header().Set("Cache-Control", "private, max-age=10")
+        w.Header().Set("Vary", "Cookie")
         cookie, err := r.Cookie("seesion")
         if err != nil {
             w.WriteHeader(403)
