@@ -55,6 +55,10 @@ type Config struct {
 	TrustCFIP bool `json:"trust_cfip"`
 	TrustFor string `json:"trust_forwarded"`
 	Captcha CaptchaSet `json:"captcha"`
+	DNSchk bool  `json:"msgdns_check"`
+	CustomDNS string `json:"custom_dns"`
+	UserAgent string `json:"user_agent"`
+	CustomHeader map[string]string `json:"custom_header"`
 }
 
 func Resolv(filename string) (Config,error) {

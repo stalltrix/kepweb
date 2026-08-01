@@ -131,6 +131,7 @@ var (
 	skipSSLchk bool
 	loginPage []byte
 	captchaon bool
+	msgDNSchk bool
 )
 
 //go:embed static/*
@@ -609,9 +610,11 @@ func async_send(payload ReplyRequest) (string,error) {
     msg := buf.Bytes()
 	hashHex := hex.EncodeToString(tHash)
 	
-	_,err=verify.ParseAndVerify(msg)
-	if err != nil {
-		return hashHex,err
+	if msgDNSchk{
+		_,err=verify.ParseAndVerify(msg)
+		if err != nil {
+			return hashHex,err
+		}
 	}
 	
 	//go func(){
@@ -1555,6 +1558,22 @@ func main() {
 			logger.Fatalln("Err: can't read custom file404:",err)
 		}
 		logWarn.Println("init: set custom 404 page",cfg.Custom404)
+	}
+	if cfg.DNSchk {
+		msgDNSchk=cfg.DNSchk
+	}
+	if cfg.CustomDNS != "" {
+		logWarn.Println("set dns server:",cfg.CustomDNS)
+		err=verify.SET_DNS_SERVER(cfg.CustomDNS)
+		if err != nil {
+			logger.Fatalln("Err: set dns server:",err)
+		}
+	}
+	if cfg.UserAgent != "" {
+		send.Custom_userAgent=strings.TrimSpace(cfg.UserAgent)
+	}
+	if len(cfg.CustomHeader)>0{
+		send.Custom_header=cfg.CustomHeader
 	}
 	if cfg.CustomIdx.HTTPCode != 0 {
 		if cfg.CustomIdx.HTTPCode <200 || cfg.CustomIdx.HTTPCode > 599 {
