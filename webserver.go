@@ -132,6 +132,7 @@ var (
 	loginPage []byte
 	captchaon bool
 	msgDNSchk bool
+	randtopic bool
 )
 
 //go:embed static/*
@@ -304,9 +305,9 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	time_now:=time.Now().Unix()
 	if echoMeta {
 		respReplies:=post.Replies
-		time_now:=time.Now().Unix()
 		if respReplies[0].MetaTime+3600 < time_now {
 		respReplies[0].MetaTime=time_now
 		for i:=range respReplies {
@@ -318,6 +319,38 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		  }
 		}
+		}
+	}
+	if randtopic {
+		respReplies:=post.Replies
+		if respReplies[0].RandTopic==nil||respReplies[0].RandTopic.RandRenew+3600 < time_now {
+			if respReplies[0].RandTopic==nil {
+				respReplies[0].RandTopic=&postcodec.Randtopics{RandRenew:time_now}
+			} else {
+				respReplies[0].RandTopic.RandRenew=time_now
+			}
+			topics:=randlist.Get4Topic()
+			titles:=make([]string,4)
+			tags:=make([]uint16,4)
+			
+			for i:=0;i<4;i++{
+				p, ok := dbStore.Load(topics[i])
+				if !ok {
+					topics[i]=""
+					continue
+				}
+				if len(p.Replies) > 0 {
+					line := strings.SplitN(p.Replies[0].Post, "\n", 2)[0]
+					titles[i] = strings.TrimPrefix(line, "# ")
+					tags[i] = p.Replies[0].Tag
+				}
+			}
+			respReplies[0].RandTopic=&postcodec.Randtopics{
+				PostID: []string{topics[0],topics[1],topics[2],topics[3]},
+				Title: []string{titles[0],titles[1],titles[2],titles[3]},
+				Tag: []uint16{tags[0],tags[1],tags[2],tags[3]},
+				RandRenew: time_now,
+			}
 		}
 	}
 	
@@ -1594,6 +1627,10 @@ func main() {
 		logWarn.Println("server started on HTTPS:",cfg.Listen)
 	} else {
 		logWarn.Println("server started on http:",cfg.Listen)
+	}
+	if cfg.Randtopic {
+		randtopic=cfg.Randtopic
+		randlist.Renew(&sortList,sortIdx)
 	}
 	if argc >2 {
 	logfile:=os.Args[2]

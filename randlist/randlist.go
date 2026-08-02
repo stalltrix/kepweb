@@ -12,6 +12,7 @@ var (
 	randTime int64
 	loadHex int
 	lock atomic.Bool
+	point4 byte
 )
 
 func init(){
@@ -54,6 +55,7 @@ func Renew(lastList *[65536]string,lastIdx uint16){
         j := rnd.Intn(i+1)
         randList[i], randList[j] = randList[j], randList[i]
     }
+	point4=0
 }
 
 func MustRenew() bool {
@@ -62,4 +64,14 @@ func MustRenew() bool {
 
 func GetList() (*[256]string){
 	return &randList
+}
+
+func Get4Topic() []string {
+	randtopic:=make([]string,4)
+	for i:=0;i<4;i++{
+		randtopic[i]=randList[point4]
+		point4++
+		if int(point4)>=loadHex {point4=0;}
+	}
+	return randtopic
 }

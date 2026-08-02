@@ -59,6 +59,7 @@ type Config struct {
 	CustomDNS string `json:"custom_dns"`
 	UserAgent string `json:"user_agent"`
 	CustomHeader map[string]string `json:"custom_header"`
+	Randtopic bool `json:"rand_topic"`
 }
 
 func Resolv(filename string) (Config,error) {

@@ -307,6 +307,19 @@ font-size: 14px;
     from{transform:rotate(0deg);}
     to{transform:rotate(360deg);}
 }
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+.badge-color {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    margin-right: 5px;
+}
     </style>
 	<link rel="stylesheet" href="static/markdown.min.css">
 </head>
@@ -375,6 +388,7 @@ font-size: 14px;
                             <button type="submit" class="btn" id="submit-btn">发送回复</button>
                         </form>
                     </div>
+					<div id="randtopics" class="card" style="margin-top: 20px;display:none"></div>
                 </div>
 
             </main>
@@ -1053,6 +1067,53 @@ ${item.typeid}
     container.appendChild(el);
 });
 
+const randTopic = data[0]?.rand_topic;
+if (randTopic&&Array.isArray(randTopic.topicid)&&Array.isArray(randTopic.title)&&Array.isArray(randTopic.tag)) {
+    const randtopicBox = document.getElementById('randtopics');
+
+    let html = `
+        <div style="
+            font-size:18px;
+            font-weight:bold;
+            margin-bottom:12px;
+        ">
+            推荐话题
+        </div>
+    `;
+
+    for (let i = 0; i < randTopic.topicid.length; i++) {
+        const id = randTopic.topicid[i];
+        if (!id) continue;
+        const title = randTopic.title[i] || "无标题";
+		const tag = TAG_MAP[randTopic.tag[i]] || {name:"未知",color:"#999"};
+
+        html += `
+            <div class="recommend-topic"
+                 style="
+                    padding:10px 0;
+                    border-top:1px solid #eee;
+                    cursor:pointer;
+                 "
+                 onclick="app.goToPost('${id}')">
+
+                <div style="
+                    font-size:15px;
+                    color:#333;
+                ">
+                    ${this.escapeHtml(title)}
+                </div>
+
+            <div class="category-badge">
+				<span class="badge-color" style="background:${tag.color}"></span>
+				${tag.name}
+			</div>
+            </div>
+        `;
+    }
+
+    randtopicBox.innerHTML = html;
+    randtopicBox.style.display = '';
+}
         } catch (err) {
             container.innerHTML = '<div>加载失败</div>';
             console.error(err);

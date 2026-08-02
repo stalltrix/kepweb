@@ -2,6 +2,13 @@ package postcodec
 
 import "google.golang.org/protobuf/proto"
 
+type Randtopics struct {
+	PostID []string `json:"topicid"`
+	Title []string `json:"title"`
+	Tag []uint16 `json:"tag"`
+	RandRenew int64 `json:"-"`
+}
+
 type Reply struct {
     ID   int    `json:"id"`
     User string `json:"user"`
@@ -13,6 +20,7 @@ type Reply struct {
 	Tag  uint16  `json:"tag"`
 	Hex string  `json:"hex"`
 	MetaTime int64 `json:"-"`
+	RandTopic *Randtopics `json:"rand_topic,omitempty"`
 }
 
 type Post struct {
