@@ -16,6 +16,7 @@ import (
 	"github.com/stalltrix/kep-demo/verify"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/base32"
 	"time"
 	"bytes"
     "crypto/ed25519"
@@ -38,6 +39,7 @@ import (
 	"github.com/stalltrix/kepweb/randlist"
 	"github.com/stalltrix/kepweb/keyencode"
 	"github.com/stalltrix/kepweb/captcha"
+	"github.com/stalltrix/kepweb/profile"
 	"net/netip"
 )
 
@@ -669,6 +671,9 @@ func loadData(tag string,renew bool){
 				logWarn.Println("load data err:",err)
 				return;
 			}
+			if dat.Atag <65534 {
+				profile.AddPts(dat,&profile.Default)
+			}
 			txt:=dat.Atxt
 			domain:=dat.Adomain
 			timestamp:=dat.Atimestamp
@@ -1260,6 +1265,43 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":1,"user":"`+myself+`","nonce":"`+post_prefix+`"}`))
 }
 
+func spaceHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("seesion")
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	_,ok:=sessMap.Load(cookie.Value)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	
+	path1:=strings.TrimPrefix(r.URL.Path,"/space/")
+		
+	if path1=="" {
+		http.Redirect(w, r, "/space/profile", http.StatusFound)
+		return
+	}
+	
+	if path1=="profile" {
+		profile.PagesHandler(w,r,&profile.Default)
+		return
+	}
+	
+	if path1=="api/self" {
+		profile.APIHandler(w,r,&profile.Default)
+		return
+	}
+	
+	if len(custom_404) >0 {
+		w.WriteHeader(404)
+		w.Write(custom_404)
+		return
+	}
+	http.NotFound(w, r)
+}
+
 func topicHandler(w http.ResponseWriter, r *http.Request) {
 	hex := strings.TrimPrefix(r.URL.Path, "/t/topic/")
 	if !IsHex(hex) {
@@ -1323,6 +1365,7 @@ func router(w http.ResponseWriter, r *http.Request) {
 		}
 		return;
 	}
+	if strings.HasPrefix(r.URL.Path, "/space/") { spaceHandler(w,r); return;}
 	if strings.HasPrefix(r.URL.Path, "/t/topic/") { topicHandler(w,r); return;}
 	if len(custom_404) >0 {
 		w.WriteHeader(404)
@@ -1374,6 +1417,11 @@ func main() {
 	if err!=nil {
 		logger.Fatalln("can't read login.html",err)
 	}
+	profilePage,err:=os.ReadFile(filepath.Join(self, "profile.html"))
+	if err!=nil {
+		logger.Fatalln("can't read profile.html",err)
+	}
+	profile.LoadPage(profilePage)
 	
 	cfg,err := config.Resolv(cfg_file)
 	if err!=nil {
@@ -1482,6 +1530,10 @@ func main() {
 	if len(signKey) != ed25519.PrivateKeySize {
 		logger.Fatalln("Err: user signKey, err size")
 	}
+	
+	profile.Default.UserID=strings.ToLower(strings.TrimRight(base32.StdEncoding.EncodeToString(mainPub),"="))
+	copy(profile.Default.UserK[:],mainPub)
+	profile.Default.Domain=myself
 	
 	notify.Init_path(self)
 	initData()
