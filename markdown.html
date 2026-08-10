@@ -613,7 +613,7 @@ function replaceText(text, start, end, mode = 'end') {
   } catch (e) {}
 
   if (!ok) {
-    replaceText(text, start, end, mode);
+    input.setRangeText(text, start, end, mode);
   }
 }
 
