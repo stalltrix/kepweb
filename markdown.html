@@ -585,14 +585,14 @@ function wrap(before, after) {
   if (selected) {
     const text = before + selected + after;
 
-    input.setRangeText(text, start, end, 'select');
+    replaceText(text, start, end, 'select');
 
     input.selectionStart = start + before.length;
     input.selectionEnd = start + before.length + selected.length;
   } else {
     const text = before + after;
 
-    input.setRangeText(text, start, end, 'end');
+    replaceText(text, start, end, 'end');
 
     const cursor = start + before.length;
 
@@ -602,6 +602,19 @@ function wrap(before, after) {
 
   input.focus();
   renderMarkdown();
+}
+
+function replaceText(text, start, end, mode = 'end') {
+  input.focus();
+  input.setSelectionRange(start, end);
+  let ok = false;
+  try {
+    ok = document.execCommand('insertText', false, text);
+  } catch (e) {}
+
+  if (!ok) {
+    replaceText(text, start, end, mode);
+  }
 }
 
 function linePrefix(prefix) {
@@ -627,7 +640,7 @@ function linePrefix(prefix) {
     })
     .join('\n');
 
-  input.setRangeText(replaced, lineStart, lineEnd, 'end');
+  replaceText(replaced, lineStart, lineEnd, 'end');
 
   input.focus();
   renderMarkdown();
@@ -642,7 +655,7 @@ function insertBlock(before, after, placeholder = '') {
 
   const text = before + content + after;
 
-  input.setRangeText(text, start, end, 'end');
+  replaceText(text, start, end, 'end');
 
   if (!selected && placeholder) {
     const cursor = start + before.length;
@@ -659,7 +672,7 @@ function insert(text) {
   const start = input.selectionStart;
   const end = input.selectionEnd;
 
-  input.setRangeText(text, start, end, 'end');
+  replaceText(text, start, end, 'end');
 
   input.focus();
   renderMarkdown();
